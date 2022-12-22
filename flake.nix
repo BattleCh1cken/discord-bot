@@ -28,6 +28,7 @@
           buildInputs = with pkgs; [
             sqlite
             sqlx-cli
+            sqliteman
             (pkgs.fenix.complete.withComponents [
               "cargo"
               "clippy"

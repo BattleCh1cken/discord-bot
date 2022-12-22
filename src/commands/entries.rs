@@ -1,7 +1,8 @@
-use crate::{db, Context, Error};
+use crate::{Context, Error};
 use chrono::prelude::*;
 use poise::serenity_prelude as serenity;
-#[poise::command(slash_command)]
+
+#[poise::command(slash_command, prefix_command)]
 pub async fn create_entry(
     ctx: Context<'_>,
     #[description = "time you want the timer to run"] time: i64,
@@ -9,54 +10,59 @@ pub async fn create_entry(
 ) -> Result<(), Error> {
     let current_time = Utc::now();
     let duration = chrono::Duration::hours(time);
-    let entry = db::Entry {
-        start_time: current_time,
-        end_time: current_time + duration,
-    };
-    let member = db::Member {
-        name: users.name,
-        user_id: users.id.into(),
-    };
+    let start_time = current_time;
+    let end_time = current_time + duration;
+
+    let name = users.name;
+    let id: i64 = users.id.into();
 
     //we want to make sure that this thread is the only one with access to the db
     let mut conn = ctx.data().database.acquire().await?;
-
-    let _insert_members = sqlx::query(
-        "INSERT INTO members ( user_id,  name)
-          VALUES (?, ?);",
+    let entry_id = sqlx::query!(
+        "insert into entries (start_time, end_time) values(?, ?)",
+        start_time,
+        end_time
     )
-    .bind(member.user_id)
-    .bind(member.name)
+    .execute(&mut conn)
+    .await?
+    .last_insert_rowid();
+    let member_id = sqlx::query!("insert into members (user_id, name) values(?, ?)", name, id,)
+        .execute(&mut conn)
+        .await?
+        .last_insert_rowid();
+
+    let _le_binding = sqlx::query!(
+        "insert into member_entries(entry_id, member_id) values(?,?)",
+        entry_id,
+        member_id
+    )
     .execute(&mut conn)
     .await?;
 
-    let _inset_entry = sqlx::query(
-        "INSERT INTO entries ( start_time, end_time)
-           VALUES (?,?);",
-    )
-    .bind(entry.start_time)
-    .bind(entry.end_time)
-    .execute(&mut conn)
-    .await?;
-
-    //searching
-    let search_db = sqlx::query_as::<_, db::Member>("SELECT user_id, name FROM members")
-        .fetch_all(&mut conn)
-        .await?;
-
-    for user in search_db {
-        println!("{} {}", user.user_id, user.name);
-    }
-
-    let entry_search = sqlx::query_as::<_, db::Entry>("SELECT start_time, end_time FROM entries")
-        .fetch_all(&mut conn)
-        .await?;
-
-    for entry in entry_search {
-        println!("{} {}", entry.start_time, entry.end_time);
-    }
-
-    let response = format!("trust the backend");
+    let response = format!("Created entry for user '{}'", name);
     ctx.say(response).await?;
+    Ok(())
+}
+
+#[poise::command(slash_command, prefix_command)]
+pub async fn list_entries(ctx: Context<'_>) -> Result<(), Error> {
+    let mut conn = ctx.data().database.acquire().await?;
+
+    let search = sqlx::query!(
+        // just pretend "accounts" is a real table
+        "select id,entry_id, member_id from member_entries"
+    )
+    .fetch_all(&mut conn)
+    .await?;
+    for entry in search {
+        let response = format!(
+            "Id: {:?}  Entry id: {:?}  Member id:{:?}",
+            entry.id,
+            entry.entry_id.unwrap(),
+            entry.member_id.unwrap()
+        );
+        ctx.say(response).await?;
+    }
+
     Ok(())
 }

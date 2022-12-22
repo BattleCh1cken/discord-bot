@@ -1,7 +1,8 @@
 mod commands;
+use commands::*;
 mod db;
 use dotenvy;
-use poise::serenity_prelude as serenity;
+use poise::serenity_prelude::{self as serenity, Activity};
 use sqlx::{Pool, Sqlite};
 use std::collections::HashSet;
 
@@ -29,21 +30,24 @@ async fn main() -> anyhow::Result<()> {
     let notebooker_role = env_var("NOTEBOOKER_ROLE");
     let guild_id = env_var("GUILD");
     let owner_id = env_var::<u64>("OWNER");
+    let token = env_var::<String>("TOKEN");
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
             commands: vec![
-                commands::age(),
-                commands::boop(),
-                commands::entries::create_entry(),
+                age(),
+                boop(),
+                entries::create_entry(),
+                entries::list_entries(),
             ],
             owners: HashSet::from([serenity::UserId::from(owner_id.unwrap())]),
             ..Default::default()
         })
-        .token(std::env::var("TOKEN").expect("missing DISCORD_TOKEN"))
+        .token(token.unwrap())
         .intents(serenity::GatewayIntents::non_privileged())
         .setup(|ctx, _ready, framework| {
             Box::pin(async move {
+                ctx.set_activity(Activity::watching("the watchmen")).await;
                 poise::builtins::register_in_guild(
                     ctx,
                     &framework.options().commands,

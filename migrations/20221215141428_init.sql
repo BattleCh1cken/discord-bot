@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS members
 CREATE TABLE IF NOT EXISTS member_entries
 (
   id integer primary key asc,
+  entry_id int,
+  member_id int,
   FOREIGN KEY(entry_id) REFERENCES entries(id)
   FOREIGN KEY(member_id) REFERENCES members(id)
 );

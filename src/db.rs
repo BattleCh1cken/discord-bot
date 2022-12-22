@@ -4,19 +4,21 @@ use std::env;
 
 #[derive(Clone, FromRow, Debug)]
 pub struct Entry {
+    pub id: u32,
     pub start_time: DateTime<Utc>,
     pub end_time: DateTime<Utc>,
 }
 
 #[derive(Clone, FromRow, Debug)]
 pub struct Member {
+    pub id: u32,
     pub user_id: i64,
     pub name: String,
 }
 
 #[derive(Clone, FromRow, Debug)]
 pub struct MemberEntries {
-    pub id: i32,
+    pub id: u32,
     pub member_id: i32,
     pub entery_id: i32,
 }
