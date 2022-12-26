@@ -1,21 +1,14 @@
-CREATE TABLE IF NOT EXISTS entries
+ create table if not exists entries
 (
-  id integer primary key asc,
-  start_time datetime,
-  end_time datetime
-);
-CREATE TABLE IF NOT EXISTS members
-(
-  id integer primary key asc,
-  user_id int,
-  name text
+  id integer primary key autoincrement,
+  end_time datetime not null,
+  user_id integer not null,
+  active boolean not null
 );
 
-CREATE TABLE IF NOT EXISTS member_entries
+create table if not exists boop_score
 (
-  id integer primary key asc,
-  entry_id int,
-  member_id int,
-  FOREIGN KEY(entry_id) REFERENCES entries(id)
-  FOREIGN KEY(member_id) REFERENCES members(id)
+  id integer not null primary key asc,
+  score integer not null,
+  user_id integer not null
 );

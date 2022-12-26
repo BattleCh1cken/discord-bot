@@ -1,4 +1,5 @@
 mod commands;
+mod events;
 use commands::*;
 mod db;
 use dotenvy;
@@ -38,8 +39,12 @@ async fn main() -> anyhow::Result<()> {
                 age(),
                 boop(),
                 entries::create_entry(),
+                entries::entry_complete(),
                 entries::list_entries(),
             ],
+            event_handler: |_ctx, event, _framework, _data| {
+                Box::pin(events::event_listener(_ctx, event, _framework, _data))
+            },
             owners: HashSet::from([serenity::UserId::from(owner_id.unwrap())]),
             ..Default::default()
         })
@@ -48,6 +53,11 @@ async fn main() -> anyhow::Result<()> {
         .setup(|ctx, _ready, framework| {
             Box::pin(async move {
                 ctx.set_activity(Activity::watching("the watchmen")).await;
+                let poll_ctx = ctx.clone();
+                tokio::spawn(async move {
+                    db::poll(poll_ctx, db::new().await.unwrap()).await;
+                });
+
                 poise::builtins::register_in_guild(
                     ctx,
                     &framework.options().commands,
