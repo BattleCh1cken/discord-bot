@@ -1,0 +1,2 @@
+- enforce permissions
+- package the bot

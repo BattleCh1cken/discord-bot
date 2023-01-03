@@ -1,3 +1,8 @@
 /target
 .direnv
 .env
+
+#db stuff
+bot.db-shm
+bot.db-wal
+bot.db

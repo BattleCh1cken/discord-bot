@@ -1,5 +1,5 @@
-use crate::Error;
 use crate::Context;
+use crate::Error;
 use poise::serenity_prelude as serenity;
 pub mod entries;
 /// Displays your or another user's account creation date
@@ -13,8 +13,6 @@ pub async fn age(
     ctx.say(response).await?;
     Ok(())
 }
-
-
 
 /// Boop the bot!
 #[poise::command(prefix_command, track_edits, slash_command)]
@@ -45,7 +43,7 @@ pub async fn boop(ctx: Context<'_>) -> Result<(), Error> {
         boop_count += 1;
 
         let mut msg = mci.message.clone();
-        msg.edit(ctx, |m| m.content(format!("Boop count: {}", boop_count)))
+        msg.edit(ctx, |m| m.content(format!("Boop count: {boop_count}")))
             .await?;
 
         mci.create_interaction_response(ctx, |ir| {

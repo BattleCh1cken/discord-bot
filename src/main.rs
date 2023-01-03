@@ -2,31 +2,33 @@ mod commands;
 mod events;
 use commands::*;
 mod db;
-use dotenvy;
 use poise::serenity_prelude::{self as serenity, Activity};
 use sqlx::{Pool, Sqlite};
 use std::collections::HashSet;
 
+// user data, which is stored and accessible in all command invocations
 pub struct Data {
     pub database: Pool<Sqlite>,
     pub notebooker_role: serenity::RoleId,
-} // User data, which is stored and accessible in all command invocations
+}
+
+//type aliases save us some typing
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Context<'a> = poise::Context<'a, Data, Error>;
 
+//TODO put this somewhere else
 fn env_var<T: std::str::FromStr>(name: &str) -> Result<T, Error>
 where
     T::Err: std::fmt::Display,
 {
     Ok(std::env::var(name)
-        .map_err(|_| format!("Missing {}", name))?
+        .map_err(|_| format!("Missing {name}"))?
         .parse()
-        .map_err(|e| format!("Invalid {}: {}", name, e))?)
+        .map_err(|e| format!("Invalid {name}: {e}"))?)
 }
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    //load ev vars
     dotenvy::dotenv()?;
     let notebooker_role = env_var("NOTEBOOKER_ROLE");
     let guild_id = env_var("GUILD");
@@ -35,13 +37,7 @@ async fn main() -> anyhow::Result<()> {
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
-            commands: vec![
-                age(),
-                boop(),
-                entries::create_entry(),
-                entries::entry_complete(),
-                entries::list_entries(),
-            ],
+            commands: vec![age(), boop(), entries::entry()],
             event_handler: |_ctx, event, _framework, _data| {
                 Box::pin(events::event_listener(_ctx, event, _framework, _data))
             },
@@ -53,9 +49,15 @@ async fn main() -> anyhow::Result<()> {
         .setup(|ctx, _ready, framework| {
             Box::pin(async move {
                 ctx.set_activity(Activity::watching("the watchmen")).await;
+                //start the task to check if entries have expired
                 let poll_ctx = ctx.clone();
                 tokio::spawn(async move {
-                    db::poll(poll_ctx, db::new().await.unwrap()).await;
+                    match db::poll(poll_ctx, db::new().await.unwrap()).await {
+                        Ok(()) => {}
+                        Err(_) => {
+                            panic!("aaah polling failed")
+                        }
+                    };
                 });
 
                 poise::builtins::register_in_guild(
