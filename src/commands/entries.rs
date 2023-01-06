@@ -42,11 +42,11 @@ pub async fn complete(ctx: Context<'_>) -> Result<(), Error> {
     let user: serenity::UserId = ctx.author().into();
     let user_id = *user.as_u64() as i64;
     //TODO make this a function
-    sqlx::query!(
+    sqlx::query(
         "update entries set active=false
                         where entries.user_id = ?",
-        user_id
     )
+    .bind(user_id)
     .execute(&mut conn)
     .await?;
     ctx.say("Entries marked as complete").await?;

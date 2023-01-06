@@ -1,6 +1,8 @@
 mod commands;
 mod events;
+mod utils;
 use commands::*;
+use utils::env_var;
 mod db;
 use poise::serenity_prelude::{self as serenity, Activity};
 use sqlx::{Pool, Sqlite};
@@ -16,20 +18,8 @@ pub struct Data {
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Context<'a> = poise::Context<'a, Data, Error>;
 
-//TODO put this somewhere else
-fn env_var<T: std::str::FromStr>(name: &str) -> Result<T, Error>
-where
-    T::Err: std::fmt::Display,
-{
-    Ok(std::env::var(name)
-        .map_err(|_| format!("Missing {name}"))?
-        .parse()
-        .map_err(|e| format!("Invalid {name}: {e}"))?)
-}
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    dotenvy::dotenv()?;
     let notebooker_role = env_var("NOTEBOOKER_ROLE");
     let guild_id = env_var("GUILD");
     let owner_id = env_var::<u64>("OWNER");
@@ -54,8 +44,8 @@ async fn main() -> anyhow::Result<()> {
                 tokio::spawn(async move {
                     match db::poll(poll_ctx, db::new().await.unwrap()).await {
                         Ok(()) => {}
-                        Err(_) => {
-                            panic!("aaah polling failed")
+                        Err(error) => {
+                            panic!("uh oh, we did an oopsy woopsy: {}", error)
                         }
                     };
                 });

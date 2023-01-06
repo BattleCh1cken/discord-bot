@@ -3,25 +3,29 @@ use chrono::prelude::*;
 use poise::serenity_prelude::{self as serenity, Mentionable};
 use std::{thread, time};
 
-use sqlx::{Pool, Sqlite, SqlitePool};
+use crate::utils;
+use sqlx::{FromRow, Pool, Sqlite};
 use std::env;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, FromRow)]
 pub struct Entry {
     pub id: u32,
     pub end_time: DateTime<Utc>,
-    pub member_id: u32,
-}
-
-#[derive(Clone, Debug)]
-pub struct User {
-    pub id: i64,
-    pub user_id: i64,
+    pub user_id: i32,
+    pub active: bool,
 }
 
 pub async fn new() -> Result<Pool<Sqlite>> {
-    let db = SqlitePool::connect(&env::var("DATABASE_URL")?).await?;
-    sqlx::migrate!("./migrations").run(&db).await?;
+    let db_url = env::var("DATABASE_URL").expect("No Database url found");
+
+    let db = sqlx::sqlite::SqlitePoolOptions::new()
+        .connect_with(
+            db_url
+                .parse::<sqlx::sqlite::SqliteConnectOptions>()?
+                //.create_if_missing(true),
+        )
+        .await?;
+    //sqlx::migrate!("./migrations").run(&db).await?;
     Ok(db)
 }
 
@@ -33,32 +37,31 @@ pub async fn insert_entry(
     //make sure this thread is the only one with access to the db
     let mut conn = db.acquire().await?;
     let user_id = *user.id.as_u64() as i64; //sqlx doesn't like u64s
-    sqlx::query!(
-        "insert into entries (end_time, user_id, active) values(?, ?, ?)",
-        end_time,
-        user_id,
-        true
-    )
-    .execute(&mut conn)
-    .await?;
+    sqlx::query("insert into entries (end_time, user_id, active) values(?, ?, ?)")
+        .bind(end_time)
+        .bind(user_id)
+        .bind(true)
+        .execute(&mut conn)
+        .await?;
 
     Ok(())
 }
 
 pub async fn poll(ctx: serenity::Context, db: Pool<Sqlite>) -> Result<()> {
-    //TODO don't hardcode this
-    let channel_id = serenity::model::id::ChannelId(823988576709640264);
+    let channel_id: serenity::ChannelId =
+        utils::env_var("NOTIFICATION_CHANNEL").expect("No notif channel given");
 
     loop {
         let mut conn = db.acquire().await?;
         //TODO this should be a function
-        let search = sqlx::query!("SELECT id, end_time, user_id, active FROM entries;")
-            .fetch_all(&mut conn)
-            .await?;
+        let search =
+            sqlx::query_as::<_, Entry>("SELECT id, end_time, user_id, active FROM entries;")
+                .fetch_all(&mut conn)
+                .await?;
 
         for entry in search {
             let current_time = Utc::now();
-            if current_time.naive_utc() > entry.end_time && entry.active {
+            if current_time > entry.end_time && entry.active {
                 let user = serenity::UserId(entry.user_id.try_into().unwrap());
 
                 channel_id
@@ -73,11 +76,11 @@ pub async fn poll(ctx: serenity::Context, db: Pool<Sqlite>) -> Result<()> {
                     })
                     .await?;
                 //TODO this should be a function
-                sqlx::query!(
+                sqlx::query(
                     "update entries set active=false
                         where entries.id = ?",
-                    entry.id
                 )
+                .bind(entry.id)
                 .execute(&mut conn)
                 .await?;
             }
