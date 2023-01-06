@@ -1,6 +1,7 @@
 /target
 .direnv
 .env
+result
 
 #db stuff
 bot.db-shm
