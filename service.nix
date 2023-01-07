@@ -1,4 +1,4 @@
-{ config, pkgs, lib, fred, ... }:
+{ config, optsions, lib, pkgs, fred, ... }:
 let
   cfg = config.services.fred;
 in
@@ -18,13 +18,10 @@ with lib; {
   };
 
   config = mkIf cfg.enable {
-
-
+    environment.systemPackages = [ fred ];
     systemd.services.fred = {
       wantedBy = [ "multi-user.target" ];
       after = [ "network.target" ];
-      description = "Start the fred service";
-
       serviceConfig = {
         environmentFile = "${cfg.envFile}";
         Type = "simple";
@@ -34,6 +31,5 @@ with lib; {
       };
     };
 
-    environment.systemPackages = [ fred ];
   };
 }

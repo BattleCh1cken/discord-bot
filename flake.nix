@@ -11,52 +11,93 @@
   };
 
   outputs = { self, nixpkgs, crane, flake-utils, ... }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let
-        pkgs = import nixpkgs {
-          inherit system;
+    let
+      system = "x86_64-linux";
+      pkgs = import nixpkgs {
+        inherit system;
+      };
+
+      craneLib = crane.lib.${system};
+      fred = craneLib.buildPackage
+        {
+          src = craneLib.cleanCargoSource ./.;
         };
 
-        craneLib = crane.lib.${system};
-        fred = craneLib.buildPackage
-          {
-            src = craneLib.cleanCargoSource ./.;
+    in
+    {
+      checks = {
+        inherit fred;
+      };
 
-            buildInputs = [
-              # Add additional build inputs here
-            ];
+      packages = {
+        default = fred;
+      };
+
+      apps.${system}.default = flake-utils.lib.mkApp {
+        drv = fred;
+      };
+      nixosModule =
+        { config, options, lib, pkgs, ... }:
+        let
+          cfg = config.services.fred;
+        in
+        with lib; {
+          options = {
+            services.fred = {
+
+              enable = mkOption {
+                default = false;
+                type = with types; bool;
+                description = "Start the fred service for a user";
+              };
+
+              envFilePath = mkOption {
+                type = with types; uniq str;
+                description = "Path the .env file";
+              };
+
+              dbFilePath = mkOption {
+                type = with types; uniq str;
+                description = "Path the .env file";
+              };
+
+            };
+
+
           };
-
-      in
-      {
-        checks = {
-          inherit fred;
+          config = mkIf cfg.enable
+            {
+              environment.systemPackages = [ fred ];
+              systemd.services.fred = {
+                wantedBy = [ "multi-user.target" ];
+                after = [ "network.target" ];
+                environment = {
+                  DATABASE_URL = "sqlite://${cfg.dbFilePath}";
+                };
+                serviceConfig = {
+                  Type = "simple";
+                  EnvironmentFile = "${cfg.envFilePath}";
+                  ExecStart = ''
+                    ${fred}/bin/fred
+                  '';
+                };
+              };
+            };
         };
 
-        packages = {
-          default = fred;
-        };
+      devShells.${system}.default = pkgs.mkShell {
+        inputsFrom = builtins.attrValues self.checks;
+        shellHook = ''
+          export $(cat .env)
+        '';
 
-        apps.default = flake-utils.lib.mkApp {
-          drv = fred;
-        };
-
-        nixosModule = import ./service.nix;
-
-        devShells.default = pkgs.mkShell {
-          inputsFrom = builtins.attrValues self.checks;
-          shellHook = ''
-            export $(cat .env)
-          '';
-
-          # Extra inputs can be added here
-          nativeBuildInputs = with pkgs; [
-            sqlx-cli
-            cargo
-            rustc
-            rustfmt
-            rust-analyzer
-          ];
-        };
-      });
+        nativeBuildInputs = with pkgs; [
+          sqlx-cli
+          cargo
+          rustc
+          rustfmt
+          rust-analyzer
+        ];
+      };
+    };
 }
