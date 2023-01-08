@@ -2,15 +2,11 @@ use crate::Context;
 use crate::Error;
 use poise::serenity_prelude as serenity;
 pub mod entries;
-/// Displays your or another user's account creation date
-#[poise::command(slash_command, prefix_command)]
-pub async fn age(
-    ctx: Context<'_>,
-    #[description = "Selected user"] user: Option<serenity::User>,
-) -> Result<(), Error> {
-    let u = user.as_ref().unwrap_or_else(|| ctx.author());
-    let response = format!("{}'s account was created at {}", u.name, u.created_at());
-    ctx.say(response).await?;
+
+#[poise::command(slash_command)]
+pub async fn repo(ctx: Context<'_>) -> Result<(), Error> {
+    ctx.say("Take a look at my code: https://github.com/Area-53-Robotics/discord-bot")
+        .await?;
     Ok(())
 }
 

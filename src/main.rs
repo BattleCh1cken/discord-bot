@@ -7,11 +7,13 @@ mod db;
 use poise::serenity_prelude::{self as serenity, Activity};
 use sqlx::{Pool, Sqlite};
 use std::collections::HashSet;
+use std::sync::Arc;
 
 // user data, which is stored and accessible in all command invocations
 pub struct Data {
-    pub database: Pool<Sqlite>,
-    pub notebooker_role: serenity::RoleId,
+    pub database: Arc<Pool<Sqlite>>,
+    pub notebooker_role: Arc<serenity::RoleId>,
+    pub guild_id: Arc<serenity::GuildId>,
 }
 
 //type aliases save us some typing
@@ -20,14 +22,15 @@ pub type Context<'a> = poise::Context<'a, Data, Error>;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let notebooker_role = env_var("NOTEBOOKER_ROLE");
-    let guild_id = env_var("GUILD");
+    let notebooker_role = Arc::new(serenity::RoleId(env_var("NOTEBOOKER_ROLE").unwrap()));
+    let guild_id = Arc::new(serenity::GuildId(env_var("GUILD").unwrap()));
     let owner_id = env_var::<u64>("OWNER");
     let token = env_var::<String>("TOKEN");
+    let database = Arc::new(db::new().await?);
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
-            commands: vec![age(), boop(), entries::entry()],
+            commands: vec![repo(), boop(), entries::entry()],
             event_handler: |_ctx, event, _framework, _data| {
                 Box::pin(events::event_listener(_ctx, event, _framework, _data))
             },
@@ -40,9 +43,10 @@ async fn main() -> anyhow::Result<()> {
             Box::pin(async move {
                 ctx.set_activity(Activity::watching("the watchmen")).await;
                 //start the task to check if entries have expired
-                let poll_ctx = ctx.clone();
+                let polling_ctx = ctx.clone();
+                let polling_database = Arc::clone(&database);
                 tokio::spawn(async move {
-                    match db::poll(poll_ctx, db::new().await.unwrap()).await {
+                    match db::poll(polling_ctx, polling_database).await {
                         Ok(()) => {}
                         Err(error) => {
                             panic!("uh oh, we did an oopsy woopsy: {}", error)
@@ -50,15 +54,12 @@ async fn main() -> anyhow::Result<()> {
                     };
                 });
 
-                poise::builtins::register_in_guild(
-                    ctx,
-                    &framework.options().commands,
-                    serenity::GuildId(guild_id.unwrap()),
-                )
-                .await?;
+                poise::builtins::register_in_guild(ctx, &framework.options().commands, *guild_id)
+                    .await?;
                 Ok(Data {
-                    database: db::new().await?,
-                    notebooker_role: notebooker_role.unwrap(),
+                    database,
+                    notebooker_role,
+                    guild_id,
                 })
             })
         });

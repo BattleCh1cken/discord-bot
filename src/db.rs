@@ -1,6 +1,7 @@
 use anyhow::Result;
 use chrono::prelude::*;
 use poise::serenity_prelude::{self as serenity, Mentionable};
+use std::sync::Arc;
 use std::{thread, time};
 
 use crate::utils;
@@ -9,9 +10,9 @@ use std::env;
 
 #[derive(Clone, Debug, FromRow)]
 pub struct Entry {
-    pub id: u32,
+    pub id: i32,
     pub end_time: DateTime<Utc>,
-    pub user_id: i32,
+    pub user_id: i64,
     pub active: bool,
 }
 
@@ -20,9 +21,7 @@ pub async fn new() -> Result<Pool<Sqlite>> {
 
     let db = sqlx::sqlite::SqlitePoolOptions::new()
         .connect_with(
-            db_url
-                .parse::<sqlx::sqlite::SqliteConnectOptions>()?
-                //.create_if_missing(true),
+            db_url.parse::<sqlx::sqlite::SqliteConnectOptions>()?, //.create_if_missing(true),
         )
         .await?;
     //sqlx::migrate!("./migrations").run(&db).await?;
@@ -47,7 +46,7 @@ pub async fn insert_entry(
     Ok(())
 }
 
-pub async fn poll(ctx: serenity::Context, db: Pool<Sqlite>) -> Result<()> {
+pub async fn poll(ctx: serenity::Context, db: Arc<Pool<Sqlite>>) -> Result<()> {
     let channel_id: serenity::ChannelId =
         utils::env_var("NOTIFICATION_CHANNEL").expect("No notif channel given");
 

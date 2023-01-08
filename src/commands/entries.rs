@@ -1,6 +1,6 @@
 use crate::{db, Context, Error};
 use chrono::prelude::*;
-use poise::serenity_prelude as serenity;
+use poise::serenity_prelude::{self as serenity, CacheHttp};
 
 #[poise::command(
     slash_command,
@@ -19,23 +19,46 @@ pub async fn entry(ctx: Context<'_>) -> Result<(), Error> {
 #[poise::command(slash_command, prefix_command)]
 pub async fn create(
     ctx: Context<'_>,
-    #[description = "time you want the timer to run"] time: i64,
+    #[description = "time you want the timer to run, in hours"] time: i64,
     #[description = "people you want to complete the entry"] user: serenity::User,
 ) -> Result<(), Error> {
+    //We want to make sure that the use is supposed to be using this command
+    if !ctx
+        .author()
+        .has_role(
+            ctx.http(),
+            *ctx.data().guild_id,
+            *ctx.data().notebooker_role,
+        )
+        .await?
+    {
+        ctx.say("You aren't a notebooker").await?;
+        return Ok(());
+    }
+    /*
+    //we only want the user to use this command in the specified guild
+    if ctx.guild_id().unwrap() == *ctx.data().guild_id {
+        ctx.say("Are you lost?").await?;
+        return Ok(());
+    }
+    */
+
     let current_time = Utc::now();
-    let duration = chrono::Duration::seconds(time);
+    //Change this to hours
+    let duration = chrono::Duration::hours(time);
     let end_time = current_time + duration;
 
     db::insert_entry(&ctx.data().database, &end_time, &user).await?;
 
     let response = format!(
-        "Started an entry timer for '{}' lasting {} seconds",
+        "Started an entry timer for '{}' lasting {} hours",
         user.name, time
     );
     ctx.say(response).await?;
     Ok(())
 }
 
+///Marks your entries as complete, absolves you of shame
 #[poise::command(slash_command, prefix_command)]
 pub async fn complete(ctx: Context<'_>) -> Result<(), Error> {
     let mut conn = ctx.data().database.acquire().await?;
@@ -54,6 +77,7 @@ pub async fn complete(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
+///This doesn't do anything yet
 #[poise::command(slash_command, prefix_command)]
 pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
     ctx.say("uuh I haven't implemented this yet").await?;

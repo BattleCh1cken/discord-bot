@@ -342,19 +342,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "03d8c417d7a8cb362e0c37e5d815f5eb7c37f79ff93707329d5a194e42e54ca0"
 
 [[package]]
-name = "edward"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono",
- "extend",
- "poise",
- "serenity",
- "sqlx",
- "tokio",
-]
-
-[[package]]
 name = "either"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -422,6 +409,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a9c384f161156f5260c24a097c56119f9be8c798586aecc13afbcbe7b7e26bf8"
 dependencies = [
  "percent-encoding",
+]
+
+[[package]]
+name = "fred"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "extend",
+ "poise",
+ "serenity",
+ "sqlx",
+ "tokio",
 ]
 
 [[package]]

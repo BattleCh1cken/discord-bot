@@ -93,6 +93,8 @@
 
         nativeBuildInputs = with pkgs; [
           sqlx-cli
+          sqliteman
+          sqlite
           cargo
           rustc
           rustfmt
