@@ -1,6 +1,6 @@
 use crate::{db, Context, Error};
 use chrono::prelude::*;
-use poise::serenity_prelude::{self as serenity, CacheHttp};
+use poise::serenity_prelude::{self as serenity, CacheHttp, Mentionable};
 
 #[poise::command(
     slash_command,
@@ -52,7 +52,7 @@ pub async fn create(
 
     let response = format!(
         "Started an entry timer for '{}' lasting {} hours",
-        user.name, time
+        user.mention(), time
     );
     ctx.say(response).await?;
     Ok(())
