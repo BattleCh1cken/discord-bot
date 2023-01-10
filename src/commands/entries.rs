@@ -2,13 +2,12 @@ use crate::{db, Context, Error};
 use chrono::prelude::*;
 use poise::serenity_prelude::{self as serenity, CacheHttp, Mentionable};
 
+///Commands that handle notebook entries
 #[poise::command(
     slash_command,
     prefix_command,
     subcommands("create", "list", "complete")
 )]
-
-///Commands that handle notebook entries
 pub async fn entry(ctx: Context<'_>) -> Result<(), Error> {
     ctx.say("Subcommands include: create, complete, list")
         .await?;
@@ -35,24 +34,18 @@ pub async fn create(
         ctx.say("You aren't a notebooker").await?;
         return Ok(());
     }
-    /*
-    //we only want the user to use this command in the specified guild
-    if ctx.guild_id().unwrap() == *ctx.data().guild_id {
-        ctx.say("Are you lost?").await?;
-        return Ok(());
-    }
-    */
 
     let current_time = Utc::now();
     //Change this to hours
     let duration = chrono::Duration::hours(time);
     let end_time = current_time + duration;
 
-    db::insert_entry(&ctx.data().database, &end_time, &user).await?;
+    db::entries::insert_entry(&ctx.data().database, &end_time, &user).await?;
 
     let response = format!(
-        "Started an entry timer for '{}' lasting {} hours",
-        user.mention(), time
+        "Started an entry timer for {} lasting {} hours",
+        user.mention(),
+        time
     );
     ctx.say(response).await?;
     Ok(())
@@ -61,17 +54,10 @@ pub async fn create(
 ///Marks your entries as complete, absolves you of shame
 #[poise::command(slash_command, prefix_command)]
 pub async fn complete(ctx: Context<'_>) -> Result<(), Error> {
-    let mut conn = ctx.data().database.acquire().await?;
     let user: serenity::UserId = ctx.author().into();
     let user_id = *user.as_u64() as i64;
-    //TODO make this a function
-    sqlx::query(
-        "update entries set active=false
-                        where entries.user_id = ?",
-    )
-    .bind(user_id)
-    .execute(&mut conn)
-    .await?;
+    db::entries::complete_entry(&ctx.data().database, user_id).await?;
+
     ctx.say("Entries marked as complete").await?;
 
     Ok(())

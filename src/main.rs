@@ -2,12 +2,12 @@ mod commands;
 mod events;
 mod utils;
 use commands::*;
-use utils::env_var;
-mod db;
 use poise::serenity_prelude::{self as serenity, Activity};
 use sqlx::{Pool, Sqlite};
 use std::collections::HashSet;
 use std::sync::Arc;
+use utils::env_var;
+mod db;
 
 // user data, which is stored and accessible in all command invocations
 pub struct Data {
@@ -30,7 +30,7 @@ async fn main() -> anyhow::Result<()> {
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
-            commands: vec![repo(), boop(), entries::entry()],
+            commands: vec![repo(), boop::boop(), boop::leaderboard(), entries::entry()],
             event_handler: |_ctx, event, _framework, _data| {
                 Box::pin(events::event_listener(_ctx, event, _framework, _data))
             },

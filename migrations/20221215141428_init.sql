@@ -8,7 +8,7 @@
 
 create table if not exists boop_score
 (
-  id integer not null primary key asc,
+  id integer primary key autoincrement,
   score integer not null,
   user_id integer not null
 );
