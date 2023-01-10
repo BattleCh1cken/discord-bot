@@ -63,7 +63,7 @@ pub async fn leaderboard(ctx: Context<'_>) -> Result<(), Error> {
             .await?;
 
         index += 1;
-        response += &format!("{}. {} -- {}", index, user.name, score.score);
+        response += &format!("{}. {} -- {}\n", index, user.name, score.score);
     }
 
     //Why I can't use ctx.say() here I have no idea
