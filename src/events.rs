@@ -1,4 +1,5 @@
 use crate::{Data, Error};
+use log::info;
 use poise::serenity_prelude as serenity;
 use poise::Event;
 pub async fn event_listener(
@@ -9,10 +10,10 @@ pub async fn event_listener(
 ) -> Result<(), Error> {
     match event {
         Event::Ready { data_about_bot } => {
-            println!("{:#?} is coming online", data_about_bot.user.name);
+            info!("{:#?} is coming online", data_about_bot.user.name);
         }
         _ => {
-            println!("{}", event.name());
+            info!("{}", event.name());
         }
     }
     Ok(())

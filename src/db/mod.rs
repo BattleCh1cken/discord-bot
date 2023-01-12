@@ -48,6 +48,6 @@ pub async fn poll(ctx: serenity::Context, db: Arc<Pool<Sqlite>>) -> Result<()> {
                 entries::complete_entry(&db, entry.user_id).await?;
             }
         }
-        thread::sleep(time::Duration::from_secs(1));
+        thread::sleep(time::Duration::from_secs(30));
     }
 }

@@ -8,14 +8,16 @@ use poise::serenity_prelude::{self as serenity, CacheHttp, Mentionable};
     prefix_command,
     subcommands("create", "list", "complete")
 )]
-pub async fn entry(ctx: Context<'_>) -> Result<(), Error> {
-    ctx.say("Subcommands include: create, complete, list")
-        .await?;
+pub async fn entry(_ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
 ///create a new entry timer
-#[poise::command(slash_command, prefix_command)]
+#[poise::command(
+    slash_command,
+    prefix_command,
+    //check = "crate::commands::check_if_is_notebooker"
+)]
 pub async fn create(
     ctx: Context<'_>,
     #[description = "time you want the timer to run, in hours"] time: i64,
