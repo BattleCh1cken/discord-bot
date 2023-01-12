@@ -1,34 +1,40 @@
-use crate::{db, Context, Error};
+use crate::{db, Context, Data, Error};
+use log::error;
 
 use poise::serenity_prelude::{self as serenity, CacheHttp};
 
+async fn error_handler(error: poise::FrameworkError<'_, Data, Error>) {
+    error!("While running command: {:#?}", error)
+}
+
 /// Boop the bot!
-#[poise::command(prefix_command, track_edits, slash_command)]
+#[poise::command(ephemeral, slash_command, guild_only, on_error = "error_handler")]
 pub async fn boop(ctx: Context<'_>) -> Result<(), Error> {
     let uuid_boop = ctx.id();
     //query the db, look for existing score
     let mut boop_count =
         db::boop::search_for_score(&ctx.data().database, ctx.author().into()).await?;
-    println!("{boop_count}");
 
-    ctx.send(|m| {
-        m.content(format!("current score: {}", boop_count))
-            .components(|c| {
-                c.create_action_row(|ar| {
-                    ar.create_button(|b| {
-                        b.style(serenity::ButtonStyle::Primary)
-                            .label("Boop me!")
-                            .custom_id(uuid_boop)
+    let message = ctx
+        .send(|m| {
+            {
+                m.content(format!("current score: {}", boop_count))
+                    .components(|c| {
+                        c.create_action_row(|ar| {
+                            ar.create_button(|b| {
+                                b.style(serenity::ButtonStyle::Primary)
+                                    .label("Boop me!")
+                                    .custom_id(uuid_boop)
+                            })
+                        })
                     })
-                })
-            })
-    })
-    .await?;
+            }
+        })
+        .await?;
 
     while let Some(mci) = serenity::CollectComponentInteraction::new(ctx)
         .author_id(ctx.author().id)
-        .channel_id(ctx.channel_id())
-        .timeout(std::time::Duration::from_secs(120))
+        .timeout(std::time::Duration::from_secs(30))
         .filter(move |mci| mci.data.custom_id == uuid_boop.to_string())
         .await
     {
@@ -38,8 +44,8 @@ pub async fn boop(ctx: Context<'_>) -> Result<(), Error> {
         //Update score to new score
         db::boop::update_score(&ctx.data().database, boop_count, ctx.author().into()).await?;
 
-        let mut msg = mci.message.clone();
-        msg.edit(ctx, |m| m.content(format!("Boop count: {boop_count}")))
+        message
+            .edit(ctx, |m| m.content(format!("Boop count: {boop_count}")))
             .await?;
 
         mci.create_interaction_response(ctx, |ir| {
@@ -48,13 +54,14 @@ pub async fn boop(ctx: Context<'_>) -> Result<(), Error> {
         .await?;
     }
 
+    message.delete(ctx).await?;
+
     Ok(())
 }
 
 #[poise::command(slash_command)]
 pub async fn leaderboard(ctx: Context<'_>) -> Result<(), Error> {
     let scores = db::boop::get_top_scores(&ctx.data().database).await?;
-    println!("{:#?}", scores);
     let mut response = String::new();
     let mut index = 0;
     for score in scores {
