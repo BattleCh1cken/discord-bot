@@ -24,7 +24,7 @@ pub async fn new() -> Result<Pool<Sqlite>> {
 
 pub async fn poll(ctx: serenity::Context, db: Arc<Pool<Sqlite>>) -> Result<()> {
     let channel_id: serenity::ChannelId =
-        utils::env_var("NOTIFICATION_CHANNEL").expect("No notif channel given");
+        utils::env_var("NOTIFICATION_CHANNEL").expect("No notification channel given");
 
     loop {
         let search = entries::fetch_entries(&db).await?;

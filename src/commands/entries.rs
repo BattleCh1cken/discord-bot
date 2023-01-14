@@ -1,6 +1,9 @@
-use crate::{db, Context, Error};
+use crate::{
+    db::{self, entries::*},
+    Context, Error,
+};
 use chrono::prelude::*;
-use poise::serenity_prelude::{self as serenity, CacheHttp, Mentionable};
+use poise::serenity_prelude::{self as serenity, CacheHttp, Mentionable, UserId};
 
 ///Commands that handle notebook entries
 #[poise::command(
@@ -21,7 +24,8 @@ pub async fn entry(_ctx: Context<'_>) -> Result<(), Error> {
 pub async fn create(
     ctx: Context<'_>,
     #[description = "time you want the timer to run, in hours"] time: i64,
-    #[description = "people you want to complete the entry"] user: serenity::User,
+    #[description = "person you want to complete the entry"] user: serenity::User,
+    #[description = "what you want them to write in that entry"] description: String,
 ) -> Result<(), Error> {
     //We want to make sure that the use is supposed to be using this command
     if !ctx
@@ -42,21 +46,30 @@ pub async fn create(
     let duration = chrono::Duration::hours(time);
     let end_time = current_time + duration;
 
-    db::entries::insert_entry(&ctx.data().database, &end_time, &user).await?;
+    db::entries::insert_entry(&ctx.data().database, &end_time, &user, &description).await?;
 
-    let response = format!(
-        "Started an entry timer for {} lasting {} hours",
-        user.mention(),
-        time
-    );
-    ctx.say(response).await?;
+    ctx.send(|m| {
+        m.embed(|e| {
+            e.title("Entry timer created").description(format!(
+                "
+                User: {}
+                Time to complete: {} hours
+                Description: {}
+                ",
+                user.mention(),
+                time,
+                description
+            ))
+        })
+    })
+    .await?;
     Ok(())
 }
 
 ///Marks your entries as complete, absolves you of shame
 #[poise::command(slash_command, prefix_command)]
 pub async fn complete(ctx: Context<'_>) -> Result<(), Error> {
-    let user: serenity::UserId = ctx.author().into();
+    let user: UserId = ctx.author().into();
     let user_id = *user.as_u64() as i64;
     db::entries::complete_entry(&ctx.data().database, user_id).await?;
 
@@ -65,9 +78,26 @@ pub async fn complete(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-///This doesn't do anything yet
-#[poise::command(slash_command, prefix_command)]
+///Displays the current entries you need to do
+#[poise::command(slash_command, prefix_command, ephemeral)]
 pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
-    ctx.say("uuh I haven't implemented this yet").await?;
+    let user = ctx.author().id;
+    let entries = fetch_entries_for_user(&ctx.data().database, &user).await?;
+    let mut response = String::new();
+    let mut index = 0;
+    for entry in entries {
+        if entry.active {
+            index += 1;
+            let time_left = entry.end_time - Utc::now();
+            response += &format!(
+                "{index}. {} -- time left - {}:{}\n",
+                entry.description,
+                time_left.num_hours(),
+                time_left.num_minutes()
+            )
+        }
+    }
+    ctx.send(|m| m.embed(|e| e.title("Entries due").description(response)))
+        .await?;
     Ok(())
 }
