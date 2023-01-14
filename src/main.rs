@@ -22,10 +22,6 @@ pub struct Data {
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Context<'a> = poise::Context<'a, Data, Error>;
 
-async fn on_error(error: poise::FrameworkError<'_, Data, Error>) {
-    log::warn!("Encountered error: {:?}", error);
-}
-
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     let notebooker_role = Arc::new(serenity::RoleId(env_var("NOTEBOOKER_ROLE").unwrap()));
@@ -38,7 +34,14 @@ async fn main() -> anyhow::Result<()> {
 
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
-            commands: vec![repo(), boop::boop(), boop::leaderboard(), entries::entry()],
+            commands: vec![
+                repo(),
+                boop::boop(),
+                boop::leaderboard(),
+                entries::entry(),
+                owner::register(),
+                owner::motivate(),
+            ],
             event_handler: |_ctx, event, _framework, _data| {
                 Box::pin(events::event_listener(_ctx, event, _framework, _data))
             },
