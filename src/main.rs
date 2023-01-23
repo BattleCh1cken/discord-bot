@@ -41,6 +41,7 @@ async fn main() -> anyhow::Result<()> {
                 entries::entry(),
                 owner::register(),
                 owner::motivate(),
+                misc::help(),
             ],
             event_handler: |_ctx, event, _framework, _data| {
                 Box::pin(events::event_listener(_ctx, event, _framework, _data))

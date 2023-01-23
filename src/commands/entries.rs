@@ -26,8 +26,10 @@ pub async fn create(
     #[description = "time you want the timer to run, in hours"] time: i64,
     #[description = "person you want to complete the entry"] user: serenity::User,
     #[description = "what you want them to write in that entry"] description: String,
+    #[description = "whether you want the user to be reminded before the entry expires"]
+    remind: Option<bool>,
 ) -> Result<(), Error> {
-    //We want to make sure that the use is supposed to be using this command
+    //We want to make sure that the user is supposed to be using this command
     if !ctx
         .author()
         .has_role(
@@ -43,10 +45,22 @@ pub async fn create(
 
     let current_time = Utc::now();
     //Change this to hours
-    let duration = chrono::Duration::hours(time);
+    let duration = chrono::Duration::seconds(time);
     let end_time = current_time + duration;
 
-    db::entries::insert_entry(&ctx.data().database, &end_time, &user, &description).await?;
+    let remind = remind.unwrap_or_else(|| false);
+    db::users::create_user(&ctx.data().database, &user.clone().into()).await?;
+
+    let user_id = db::users::get_user_from_id(&ctx.data().database, &user.clone().into()).await?;
+
+    db::entries::insert_entry(
+        &ctx.data().database,
+        &end_time,
+        &user_id.id,
+        &description,
+        &remind,
+    )
+    .await?;
 
     ctx.send(|m| {
         m.embed(|e| {
@@ -70,8 +84,7 @@ pub async fn create(
 #[poise::command(slash_command, prefix_command)]
 pub async fn complete(ctx: Context<'_>) -> Result<(), Error> {
     let user: UserId = ctx.author().into();
-    let user_id = *user.as_u64() as i64;
-    db::entries::complete_entry(&ctx.data().database, user_id).await?;
+    db::entries::complete_entry(&ctx.data().database, user).await?;
 
     ctx.say("Entries marked as complete").await?;
 
@@ -82,7 +95,9 @@ pub async fn complete(ctx: Context<'_>) -> Result<(), Error> {
 #[poise::command(slash_command, prefix_command, ephemeral)]
 pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
     let user = ctx.author().id;
-    let entries = fetch_entries_for_user(&ctx.data().database, &user).await?;
+
+    let db_user = db::users::get_user_from_id(&ctx.data().database, &user).await?;
+    let entries = fetch_entries_for_user(&ctx.data().database, &db_user.id).await?;
     let mut response = String::new();
     let mut index = 0;
     for entry in entries {

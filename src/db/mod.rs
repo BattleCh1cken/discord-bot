@@ -1,12 +1,13 @@
 pub mod boop;
 pub mod entries;
+pub mod users;
 use anyhow::Result;
-use chrono::prelude::*;
-use poise::serenity_prelude::{self as serenity, Mentionable};
+use chrono::{prelude::*, Duration};
+use poise::serenity_prelude::{self as serenity, Mentionable, UserId};
 use std::sync::Arc;
 use std::{thread, time};
 
-use crate::utils;
+use crate::{db, utils};
 use sqlx::{Pool, Sqlite};
 use std::env;
 
@@ -30,22 +31,49 @@ pub async fn poll(ctx: serenity::Context, db: Arc<Pool<Sqlite>>) -> Result<()> {
         let search = entries::fetch_entries(&db).await?;
 
         for entry in search {
-            let current_time = Utc::now();
-            if current_time > entry.end_time && entry.active {
-                let user = serenity::UserId(entry.user_id.try_into().unwrap());
+            // Remind the user if the entries are due soon
+            if entry.end_time - Utc::now() < Duration::minutes(30) && entry.remind {
+                let user_id = db::users::get_user_from_db_id(&db, &entry.user_id)
+                    .await?
+                    .user_id;
+                let user = UserId(user_id.try_into().unwrap())
+                    .to_user(&ctx.http)
+                    .await?;
+                let response = format!("Do your entry: {}", entry.description);
+
+                user.direct_message(&ctx.http, |m| {
+                    m.embed(|e| e.title("Entry Reminder").description(response))
+                })
+                .await?;
+
+                db::entries::complete_remind(&db, &entry.id).await?;
+            }
+
+            // Engage shaming
+            if Utc::now() > entry.end_time && entry.active {
+                let user_db_id = entry.user_id;
+                let user_db_entry = db::users::get_user_from_db_id(&db, &user_db_id).await?;
+                let user = serenity::UserId(
+                    db::users::get_user_from_db_id(&db, &user_db_id)
+                        .await?
+                        .user_id
+                        .try_into()
+                        .unwrap(),
+                );
 
                 channel_id
                     .send_message(&ctx.http, |m| {
                         m.embed(|e| {
-                            e.title("Expired Entry!").description(format_args!(
-                                "Oops! Looks like {} forgot to complete their entry in time!",
-                                user.mention()
+                            e.title("Expired Entry!").description(format!(
+                                "Oops! Looks like {} forgot to complete their entry in time! They've forgotten to complete their entries {} times so far!",
+                                user.mention(), user_db_entry.missed_entries
                             ))
                         });
                         m
                     })
                     .await?;
-                entries::complete_entry(&db, entry.user_id).await?;
+                entries::complete_entry(&db, user).await?;
+                users::increase_missed_entries(&db, &user).await?;
             }
         }
         thread::sleep(time::Duration::from_secs(30));

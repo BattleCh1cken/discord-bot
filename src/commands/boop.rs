@@ -1,4 +1,10 @@
-use crate::{db, Context, Data, Error};
+use crate::{
+    db::{
+        boop::{search_for_score, update_score, get_top_scores},
+        users::create_user,
+    },
+    Context, Data, Error,
+};
 use log::error;
 
 use poise::serenity_prelude::{self as serenity, CacheHttp};
@@ -8,12 +14,18 @@ async fn error_handler(error: poise::FrameworkError<'_, Data, Error>) {
 }
 
 /// Boop the bot!
-#[poise::command(ephemeral, slash_command, guild_only, on_error = "error_handler")]
+#[poise::command(
+    ephemeral,
+    slash_command,
+    guild_only,
+    on_error = "error_handler",
+    category = "Boop"
+)]
 pub async fn boop(ctx: Context<'_>) -> Result<(), Error> {
     let uuid_boop = ctx.id();
     //query the db, look for existing score
-    let mut boop_count =
-        db::boop::search_for_score(&ctx.data().database, ctx.author().into()).await?;
+    create_user(&ctx.data().database, &ctx.author().into()).await?;
+    let mut boop_count = search_for_score(&ctx.data().database, ctx.author().into()).await?;
 
     let message = ctx
         .send(|m| {
@@ -39,10 +51,10 @@ pub async fn boop(ctx: Context<'_>) -> Result<(), Error> {
         .await
     {
         //Retrieve existing score
-        boop_count = db::boop::search_for_score(&ctx.data().database, ctx.author().into()).await?;
+        boop_count = search_for_score(&ctx.data().database, ctx.author().into()).await?;
         boop_count += 1;
         //Update score to new score
-        db::boop::update_score(&ctx.data().database, boop_count, ctx.author().into()).await?;
+        update_score(&ctx.data().database, boop_count, ctx.author().into()).await?;
 
         message
             .edit(ctx, |m| m.content(format!("Boop count: {boop_count}")))
@@ -59,9 +71,9 @@ pub async fn boop(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-#[poise::command(slash_command)]
+#[poise::command(slash_command, category = "Boop")]
 pub async fn leaderboard(ctx: Context<'_>) -> Result<(), Error> {
-    let scores = db::boop::get_top_scores(&ctx.data().database).await?;
+    let scores = get_top_scores(&ctx.data().database).await?;
     let mut response = String::new();
     let mut index = 0;
     for score in scores {
@@ -70,7 +82,7 @@ pub async fn leaderboard(ctx: Context<'_>) -> Result<(), Error> {
             .await?;
 
         index += 1;
-        response += &format!("{}. {} -- {}\n", index, user.name, score.score);
+        response += &format!("{}. {} -- {}\n", index, user.name, score.boop_score);
     }
 
     //Why I can't use ctx.say() here I have no idea
