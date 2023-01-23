@@ -23,11 +23,12 @@ pub async fn insert_entry(
     remind: &bool,
 ) -> Result<()> {
     let mut conn = db.acquire().await?;
-    sqlx::query("INSERT INTO entries (end_time, user_id, description, remind, active) VALUES(?, ?, ?, ?, ?)")
+    sqlx::query("INSERT INTO entries (end_time, user_id, description, remind, remind_time, active) VALUES(?, ?, ?, ?, ?, ?)")
         .bind(end_time)
         .bind(user_id)
         .bind(description)
         .bind(remind)
+        .bind(0) //Placeholder value
         .bind(true)
         .execute(&mut conn)
         .await?;
