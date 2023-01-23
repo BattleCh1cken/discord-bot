@@ -65,8 +65,17 @@ pub async fn poll(ctx: serenity::Context, db: Arc<Pool<Sqlite>>) -> Result<()> {
                     .send_message(&ctx.http, |m| {
                         m.embed(|e| {
                             e.title("Expired Entry!").description(format!(
-                                "Oops! Looks like {} forgot to complete their entry in time! They've forgotten to complete their entries {} times so far!",
-                                user.mention(), user_db_entry.missed_entries
+                                "
+                                **User:** {} 
+                                **Description:** {} 
+                                **Total missed entries:** {} 
+
+                                common {} L
+                                ",
+                                user.mention(),
+                                entry.description,
+                                user_db_entry.missed_entries,
+                                user.mention()
                             ))
                         });
                         m

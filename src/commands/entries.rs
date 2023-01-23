@@ -1,5 +1,5 @@
 use crate::{
-    db::{self, entries::*},
+    db::{self, entries::*, users},
     Context, Error,
 };
 use chrono::prelude::*;
@@ -66,9 +66,9 @@ pub async fn create(
         m.embed(|e| {
             e.title("Entry timer created").description(format!(
                 "
-                User: {}
-                Time to complete: {} hours
-                Description: {}
+                **User:** {}
+                **Time to complete:** {} hours
+                **Description:** {}
                 ",
                 user.mention(),
                 time,
@@ -91,21 +91,58 @@ pub async fn complete(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-///Displays the current entries you need to do
+#[derive(poise::ChoiceParameter, Debug)]
+pub enum ViewOptions {
+    #[name = "all"]
+    AllUsers,
+    #[name = "active and expired"]
+    Expired,
+    #[name = "all active and expired"]
+    All,
+    #[name = "self"]
+    Author,
+}
+//Displays entries
 #[poise::command(slash_command, prefix_command, ephemeral)]
-pub async fn list(ctx: Context<'_>) -> Result<(), Error> {
+pub async fn list(
+    ctx: Context<'_>,
+    #[description = "whether to display entries that are expired"] view: Option<ViewOptions>,
+) -> Result<(), Error> {
     let user = ctx.author().id;
+    let entries = match view.unwrap_or_else(|| ViewOptions::Author) {
+        ViewOptions::Author => {
+            let db_user_id = db::users::get_user_from_id(&ctx.data().database, &user)
+                .await?
+                .id;
+            fetch_active_entries_for_user(&ctx.data().database, &db_user_id).await?
+        }
+        ViewOptions::Expired => {
+            let db_user_id = db::users::get_user_from_id(&ctx.data().database, &user)
+                .await?
+                .id;
+            fetch_entries_for_user(&ctx.data().database, &db_user_id).await?
+        }
+        ViewOptions::AllUsers => fetch_active_entries(&ctx.data().database).await?,
 
-    let db_user = db::users::get_user_from_id(&ctx.data().database, &user).await?;
-    let entries = fetch_entries_for_user(&ctx.data().database, &db_user.id).await?;
+        ViewOptions::All => fetch_entries(&ctx.data().database).await?,
+    };
     let mut response = String::new();
     let mut index = 0;
     for entry in entries {
         if entry.active {
             index += 1;
             let time_left = entry.end_time - Utc::now();
+            let user_id = users::get_user_from_db_id(&ctx.data().database, &entry.user_id)
+                .await?
+                .user_id;
+
+            let user = UserId(user_id.try_into().unwrap())
+                .to_user(ctx.http())
+                .await?;
+
             response += &format!(
-                "{index}. {} -- time left - {}:{}\n",
+                "{index}. {} -- {} -- time left - {}:{}\n",
+                user.name,
                 entry.description,
                 time_left.num_hours(),
                 time_left.num_minutes()

@@ -1,6 +1,6 @@
 use crate::{
     db::{
-        boop::{search_for_score, update_score, get_top_scores},
+        boop::{get_top_scores, search_for_score, update_score},
         users::create_user,
     },
     Context, Data, Error,

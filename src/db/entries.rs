@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use chrono::prelude::*;
 use poise::serenity_prelude::UserId;
 use sqlx::{FromRow, Pool, Sqlite};
@@ -31,7 +31,7 @@ pub async fn insert_entry(
         .bind(0) //Placeholder value
         .bind(true)
         .execute(&mut conn)
-        .await?;
+        .await.context("Failed to insert new entry into database")?;
 
     Ok(())
 }
@@ -42,10 +42,33 @@ pub async fn fetch_entries(db: &Pool<Sqlite>) -> Result<Vec<Entry>> {
         "SELECT id, end_time, user_id, description, remind, active FROM entries;",
     )
     .fetch_all(&mut conn)
-    .await?;
+    .await
+    .context("Failed to fetch all entries from database")?;
+    Ok(search)
+}
+pub async fn fetch_active_entries(db: &Pool<Sqlite>) -> Result<Vec<Entry>> {
+    let mut conn = db.acquire().await?;
+    let search = sqlx::query_as::<_, Entry>(
+        "SELECT id, end_time, user_id, description, remind, active FROM entries where active = true;",
+    )
+    .fetch_all(&mut conn)
+    .await
+    .context("Failed to fetch all entries from database")?;
     Ok(search)
 }
 
+pub async fn fetch_active_entries_for_user(db: &Pool<Sqlite>, db_id: &i32) -> Result<Vec<Entry>> {
+    let mut conn = db.acquire().await?;
+    let search = sqlx::query_as::<_, Entry>(
+        "SELECT id, end_time, user_id, description, remind, active FROM entries WHERE user_id = ? and active = true;",
+    )
+    .bind(db_id)
+    .fetch_all(&mut conn)
+    .await
+    .context("Failed to fetch active entries for user from database")?;
+
+    Ok(search)
+}
 pub async fn fetch_entries_for_user(db: &Pool<Sqlite>, db_id: &i32) -> Result<Vec<Entry>> {
     let mut conn = db.acquire().await?;
     let search = sqlx::query_as::<_, Entry>(
@@ -53,7 +76,9 @@ pub async fn fetch_entries_for_user(db: &Pool<Sqlite>, db_id: &i32) -> Result<Ve
     )
     .bind(db_id)
     .fetch_all(&mut conn)
-    .await?;
+    .await
+    .context("Failed to fetch entries for user from database")?;
+
     Ok(search)
 }
 
@@ -71,7 +96,8 @@ pub async fn complete_entry(db: &Pool<Sqlite>, user: UserId) -> Result<()> {
     )
     .bind(user_db_id)
     .execute(&mut conn)
-    .await?;
+    .await
+    .context("Failed to mark entry as complete in database")?;
 
     Ok(())
 }
@@ -87,7 +113,8 @@ pub async fn complete_remind(db: &Pool<Sqlite>, entry_id: &i32) -> Result<()> {
     )
     .bind(entry_id)
     .execute(&mut conn)
-    .await?;
+    .await
+    .context("Failed to mark reminder as complete in database")?;
 
     Ok(())
 }
