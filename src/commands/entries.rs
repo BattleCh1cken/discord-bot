@@ -45,7 +45,7 @@ pub async fn create(
 
     let current_time = Utc::now();
     //Change this to hours
-    let duration = chrono::Duration::seconds(time);
+    let duration = chrono::Duration::hours(time);
     let end_time = current_time + duration;
 
     let remind = remind.unwrap_or_else(|| false);
