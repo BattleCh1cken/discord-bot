@@ -2,6 +2,7 @@ pub mod boop;
 pub mod entries;
 pub mod owner;
 pub mod misc;
+pub mod fun;
 
 use crate::{Context, Error};
 

@@ -464,6 +464,7 @@ dependencies = [
  "extend",
  "log",
  "poise",
+ "rand",
  "serenity",
  "sqlx",
  "tokio",
