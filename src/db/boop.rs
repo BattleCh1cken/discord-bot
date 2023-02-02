@@ -13,8 +13,7 @@ pub async fn search_for_score(db: &Pool<Sqlite>, user: serenity::UserId) -> Resu
     let user_id = *user.as_u64() as i64;
     let mut conn = db.acquire().await?;
 
-    let query: i64 = sqlx::query_scalar("SELECT boop_score FROM users WHERE user_id = ?")
-        .bind(user_id)
+    let query: i64 = sqlx::query_scalar!("select boop_score FROM users WHERE user_id = ?", user_id)
         .fetch_one(&mut conn)
         .await?;
 
@@ -23,11 +22,13 @@ pub async fn search_for_score(db: &Pool<Sqlite>, user: serenity::UserId) -> Resu
 pub async fn update_score(db: &Pool<Sqlite>, score: i64, user: serenity::UserId) -> Result<()> {
     let user_id = *user.as_u64() as i64;
     let mut conn = db.acquire().await?;
-    sqlx::query("UPDATE users SET boop_score = ? WHERE user_id = ?")
-        .bind(score)
-        .bind(user_id)
-        .execute(&mut conn)
-        .await?;
+    sqlx::query!(
+        "update users SET boop_score = ? WHERE user_id = ?",
+        score,
+        user_id
+    )
+    .execute(&mut conn)
+    .await?;
     Ok(())
 }
 

@@ -16,10 +16,13 @@ pub async fn new() -> Result<Pool<Sqlite>> {
 
     let db = sqlx::sqlite::SqlitePoolOptions::new()
         .connect_with(
-            db_url.parse::<sqlx::sqlite::SqliteConnectOptions>()?, //.create_if_missing(true),
+            db_url
+                .parse::<sqlx::sqlite::SqliteConnectOptions>()?
+                .create_if_missing(true),
         )
         .await?;
-    //sqlx::migrate!("./migrations").run(&db).await?;
+    // Whyyyy doesn't this work?
+    sqlx::migrate!("./migrations").run(&db).await?;
     Ok(db)
 }
 

@@ -16,17 +16,17 @@ pub async fn create_user(db: &Pool<Sqlite>, user: &UserId) -> Result<()> {
     let mut conn = db.acquire().await?;
     let user_id = *user.as_u64() as i64;
     //Give the user a score of 0 if they don't have a score yet
-    sqlx::query(
+    sqlx::query!(
         "
         insert into users (user_id, boop_score, missed_entries)
         select ?, ?, ?
         where not exists(select 1 from users where user_id = ?);
         ",
+        user_id,
+        0,
+        0,
+        user_id
     )
-    .bind(user_id)
-    .bind(0)
-    .bind(0)
-    .bind(user_id)
     .execute(&mut conn)
     .await?;
     Ok(())

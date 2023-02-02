@@ -45,7 +45,7 @@ pub async fn create(
 
     let current_time = Utc::now();
     //Change this to hours
-    let duration = chrono::Duration::hours(time);
+    let duration = chrono::Duration::seconds(time);
     let end_time = current_time + duration;
 
     let remind = remind.unwrap_or_else(|| false);
@@ -69,10 +69,12 @@ pub async fn create(
                 **User:** {}
                 **Time to complete:** {} hours
                 **Description:** {}
+                **Remind:** {}
                 ",
                 user.mention(),
                 time,
-                description
+                description,
+                remind
             ))
         })
     })
@@ -94,11 +96,11 @@ pub async fn complete(ctx: Context<'_>) -> Result<(), Error> {
 #[derive(poise::ChoiceParameter, Debug)]
 pub enum ViewOptions {
     #[name = "all"]
-    AllUsers,
-    #[name = "active and expired"]
-    Expired,
-    #[name = "all active and expired"]
     All,
+    #[name = "self: active and expired"]
+    AuthorExpired,
+    #[name = "all: active and expired"]
+    AllExpired,
     #[name = "self"]
     Author,
 }
@@ -116,21 +118,22 @@ pub async fn list(
                 .id;
             fetch_active_entries_for_user(&ctx.data().database, &db_user_id).await?
         }
-        ViewOptions::Expired => {
+        ViewOptions::AuthorExpired => {
             let db_user_id = db::users::get_user_from_id(&ctx.data().database, &user)
                 .await?
                 .id;
             fetch_entries_for_user(&ctx.data().database, &db_user_id).await?
         }
-        ViewOptions::AllUsers => fetch_active_entries(&ctx.data().database).await?,
+        ViewOptions::All => fetch_active_entries(&ctx.data().database).await?,
 
-        ViewOptions::All => fetch_entries(&ctx.data().database).await?,
+        ViewOptions::AllExpired => fetch_entries(&ctx.data().database).await?,
     };
     let mut response = String::new();
     let mut index = 0;
     for entry in entries {
         if entry.active {
             index += 1;
+            //negative time left doesn't work apparently.
             let time_left = entry.end_time - Utc::now();
             let user_id = users::get_user_from_db_id(&ctx.data().database, &entry.user_id)
                 .await?
@@ -141,11 +144,8 @@ pub async fn list(
                 .await?;
 
             response += &format!(
-                "{index}. {} -- {} -- time left - {}:{}\n",
-                user.name,
-                entry.description,
-                time_left.num_hours(),
-                time_left.num_minutes()
+                "{index}. {} -- {} -- time left - :\n",
+                user.name, entry.description,
             )
         }
     }

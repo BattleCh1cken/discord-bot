@@ -1,40 +1,44 @@
 {
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
-
-    crane = {
-      url = "github:ipetkov/crane";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
     flake-utils.url = "github:numtide/flake-utils";
+    naersk.url = "github:nix-community/naersk";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
   };
 
-  outputs = { self, nixpkgs, crane, flake-utils, ... }:
+  outputs = { self, flake-utils, naersk, nixpkgs }:
     let
+
       system = "x86_64-linux";
-      pkgs = import nixpkgs {
+      pkgs = (import nixpkgs) {
         inherit system;
       };
 
-      craneLib = crane.lib.${system};
-      fred = craneLib.buildPackage
+
+      naersk' = pkgs.callPackage naersk { };
+      migrations = ./migrations;
+      sqlx-db = pkgs.runCommand "sqlx-db-prepare"
         {
-          src = craneLib.cleanCargoSource ./.;
-        };
+          nativeBuildInputs = [ pkgs.sqlx-cli ];
+        } ''
+        mkdir $out
+        export DATABASE_URL=sqlite:$out/db.sqlite3
+        sqlx database create
+        sqlx migrate --source ${migrations} run
+      '';
 
     in
-    {
-      checks = {
-        inherit fred;
-      };
+    rec {
+      fred = naersk'.buildPackage {
+        src = ./.;
 
-      packages = {
-        default = fred;
-      };
+        # Haha offline mode more like, my sanity is gone
+        overrideMain = old: {
+          linkDb = ''
+            export DATABASE_URL=sqlite:${sqlx-db}/db.sqlite3
+          '';
 
-      apps.${system}.default = flake-utils.lib.mkApp {
-        drv = fred;
+          preBuildPhases = [ "linkDb" ] ++ (old.preBuildPhases or [ ]);
+        };
       };
       nixosModule =
         { config, options, lib, pkgs, ... }:
@@ -60,10 +64,7 @@
                 type = with types; uniq str;
                 description = "Path the .env file";
               };
-
             };
-
-
           };
           config = mkIf cfg.enable
             {
@@ -85,20 +86,16 @@
             };
         };
 
-      devShells.${system}.default = pkgs.mkShell {
-        inputsFrom = builtins.attrValues self.checks;
-        shellHook = ''
-          export $(cat .env)
-        '';
+      # For `nix develop` (optional, can be skipped):
 
+      devShells.${system}.default = pkgs.mkShell {
         nativeBuildInputs = with pkgs; [
+          rustc
+          cargo
+          rust-analyzer
+          rustfmt
           sqlx-cli
           sqliteman
-          sqlite
-          cargo
-          rustc
-          rustfmt
-          rust-analyzer
         ];
       };
     };

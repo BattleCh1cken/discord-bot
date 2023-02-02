@@ -462,6 +462,7 @@ dependencies = [
  "chrono",
  "env_logger",
  "extend",
+ "humantime",
  "log",
  "poise",
  "rand",

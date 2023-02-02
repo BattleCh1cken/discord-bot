@@ -1,6 +1,7 @@
 mod commands;
 mod events;
 mod utils;
+use chrono::{DateTime, Utc};
 use commands::*;
 use poise::serenity_prelude::{self as serenity, Activity};
 use sqlx::{Pool, Sqlite};
@@ -16,6 +17,7 @@ pub struct Data {
     pub database: Arc<Pool<Sqlite>>,
     pub notebooker_role: Arc<serenity::RoleId>,
     pub guild_id: Arc<serenity::GuildId>,
+    pub start_time: DateTime<Utc>,
 }
 
 //type aliases save us some typing
@@ -41,6 +43,8 @@ async fn main() -> anyhow::Result<()> {
                 entries::entry(),
                 owner::register(),
                 owner::motivate(),
+                misc::uptime(),
+                misc::resources(),
                 misc::help(),
                 fun::rps(),
             ],
@@ -81,6 +85,7 @@ async fn main() -> anyhow::Result<()> {
                     database,
                     notebooker_role,
                     guild_id,
+                    start_time: Utc::now(),
                 })
             })
         });
