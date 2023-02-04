@@ -3,6 +3,7 @@ use crate::{
     Context, Error,
 };
 use chrono::prelude::*;
+use humantime::{self, format_duration};
 use poise::serenity_prelude::{self as serenity, CacheHttp, Mentionable, UserId};
 
 ///Commands that handle notebook entries
@@ -133,8 +134,7 @@ pub async fn list(
     for entry in entries {
         if entry.active {
             index += 1;
-            //negative time left doesn't work apparently.
-            let time_left = entry.end_time - Utc::now();
+            let time_left = format_duration((entry.end_time - Utc::now()).to_std().unwrap());
             let user_id = users::get_user_from_db_id(&ctx.data().database, &entry.user_id)
                 .await?
                 .user_id;
@@ -144,8 +144,8 @@ pub async fn list(
                 .await?;
 
             response += &format!(
-                "{index}. {} -- {} -- time left - :\n",
-                user.name, entry.description,
+                "{index}. {} -- {} -- time left - {}\n",
+                user.name, entry.description, time_left
             )
         }
     }

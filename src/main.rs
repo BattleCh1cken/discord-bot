@@ -91,5 +91,6 @@ async fn main() -> anyhow::Result<()> {
         });
 
     framework.run().await.unwrap();
+    log::info!("Framework Started");
     Ok(())
 }

@@ -77,12 +77,14 @@ pub async fn leaderboard(ctx: Context<'_>) -> Result<(), Error> {
     let mut response = String::new();
     let mut index = 0;
     for score in scores {
-        let user = serenity::UserId(score.user_id as u64)
-            .to_user(&ctx.http())
-            .await?;
+        if score.boop_score != 0 {
+            let user = serenity::UserId(score.user_id as u64)
+                .to_user(&ctx.http())
+                .await?;
 
-        index += 1;
-        response += &format!("{}. {} -- {}\n", index, user.name, score.boop_score);
+            index += 1;
+            response += &format!("{}. {} -- {}\n", index, user.name, score.boop_score);
+        }
     }
 
     //Why I can't use ctx.say() here I have no idea

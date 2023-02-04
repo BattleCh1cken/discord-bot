@@ -1,28 +1,29 @@
 use anyhow::Result;
 use poise::serenity_prelude::UserId;
-use sqlx::{FromRow, Pool, Sqlite};
+use sqlx::{Pool, Sqlite};
 
 use crate::db;
 
-#[derive(Debug, FromRow)]
+#[derive(Debug)]
 pub struct User {
     pub id: i32,
     pub user_id: i64,
     pub boop_score: i64,
+    pub rps_wins: i32,
     pub missed_entries: i32,
 }
 
 pub async fn create_user(db: &Pool<Sqlite>, user: &UserId) -> Result<()> {
     let mut conn = db.acquire().await?;
     let user_id = *user.as_u64() as i64;
-    //Give the user a score of 0 if they don't have a score yet
     sqlx::query!(
         "
-        insert into users (user_id, boop_score, missed_entries)
-        select ?, ?, ?
+        insert into users (user_id, boop_score, rps_wins, missed_entries)
+        select ?, ?, ?, ?
         where not exists(select 1 from users where user_id = ?);
         ",
         user_id,
+        0,
         0,
         0,
         user_id
@@ -36,11 +37,11 @@ pub async fn increase_missed_entries(db: &Pool<Sqlite>, user: &UserId) -> Result
     let mut conn = db.acquire().await?;
 
     let user_db_id = db::users::get_user_from_id(&db, &user).await?.id;
-    sqlx::query(
+    sqlx::query!(
         "update users set missed_entries = missed_entries + 1
                         where id = ?",
+        user_db_id
     )
-    .bind(user_db_id)
     .execute(&mut conn)
     .await?;
 
@@ -50,10 +51,13 @@ pub async fn increase_missed_entries(db: &Pool<Sqlite>, user: &UserId) -> Result
 pub async fn get_user_from_id(db: &Pool<Sqlite>, user: &UserId) -> Result<User> {
     let mut conn = db.acquire().await?;
     let user_id = *user.as_u64() as i64;
-    let user = sqlx::query_as::<_, User>(
-        "select id, user_id, boop_score, missed_entries from users where user_id = ?",
+    let user = sqlx::query_as!(
+        User,
+        r#"select
+        id as "id!: i32", user_id as "user_id!", boop_score as "boop_score!", rps_wins as "rps_wins!: i32", missed_entries as "missed_entries!: i32"
+        from users where user_id = ?"#,
+        user_id
     )
-    .bind(user_id)
     .fetch_one(&mut conn)
     .await?;
 
@@ -62,10 +66,13 @@ pub async fn get_user_from_id(db: &Pool<Sqlite>, user: &UserId) -> Result<User> 
 
 pub async fn get_user_from_db_id(db: &Pool<Sqlite>, id: &i32) -> Result<User> {
     let mut conn = db.acquire().await?;
-    let user = sqlx::query_as::<_, User>(
-        "select id, user_id, boop_score, missed_entries from users where id = ?",
+    let user = sqlx::query_as!(
+        User,
+        r#"select
+        id as "id!: i32", user_id as "user_id!", boop_score as "boop_score!", rps_wins as "rps_wins!: i32", missed_entries as "missed_entries!: i32"
+        from users where id = ?"#,
+        id
     )
-    .bind(id)
     .fetch_one(&mut conn)
     .await?;
 

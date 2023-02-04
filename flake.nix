@@ -89,6 +89,9 @@
       # For `nix develop` (optional, can be skipped):
 
       devShells.${system}.default = pkgs.mkShell {
+        devShell = ''
+        export $(cat .env)
+        '';
         nativeBuildInputs = with pkgs; [
           rustc
           cargo
@@ -96,6 +99,7 @@
           rustfmt
           sqlx-cli
           sqliteman
+          sqlite
         ];
       };
     };
