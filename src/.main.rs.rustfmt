@@ -45,7 +45,6 @@ async fn main() -> anyhow::Result<()> {
                 entries::entry(),
                 owner::register(),
                 owner::motivate(),
-                settings::settings(),
                 misc::uptime(),
                 misc::resources(),
                 misc::help(),

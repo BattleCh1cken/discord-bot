@@ -30,6 +30,9 @@
     rec {
       fred = naersk'.buildPackage {
         src = ./.;
+        nativeBuildInputs = with pkgs; [
+          sqlite
+        ];
 
         # Haha offline mode more like, my sanity is gone
         overrideMain = old: {
@@ -89,8 +92,8 @@
       # For `nix develop` (optional, can be skipped):
 
       devShells.${system}.default = pkgs.mkShell {
-        devShell = ''
-        export $(cat .env)
+        shellHook = ''
+          export $(cat .env)
         '';
         nativeBuildInputs = with pkgs; [
           rustc

@@ -1,4 +1,5 @@
 use chrono::Utc;
+use humantime::format_duration;
 
 use crate::{Context, Error};
 /// Shows help menu
@@ -23,8 +24,8 @@ pub async fn help(
 /// Returns the time the bot has been online
 #[poise::command(prefix_command, track_edits, slash_command, category = "Miscellaneous")]
 pub async fn uptime(ctx: Context<'_>) -> Result<(), Error> {
-    let uptime = Utc::now() - ctx.data().start_time;
-    ctx.say(format!("{} seconds", uptime.num_seconds())).await?;
+    let uptime = format_duration((Utc::now() - ctx.data().start_time).to_std().unwrap());
+    ctx.say(format!("{} seconds", uptime)).await?;
 
     Ok(())
 }

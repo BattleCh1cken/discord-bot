@@ -6,6 +6,22 @@ use chrono::prelude::*;
 use humantime::{self, format_duration};
 use poise::serenity_prelude::{self as serenity, CacheHttp, Mentionable, UserId};
 
+async fn check_if_is_notebooker(ctx: Context<'_>) -> Result<bool, Error> {
+    let result = ctx
+        .author()
+        .has_role(
+            ctx.http(),
+            *ctx.data().guild_id,
+            *ctx.data().notebooker_role,
+        )
+        .await?;
+
+    if !result {
+        ctx.say("You aren't a notebooker").await?;
+    }
+    Ok(result)
+}
+
 ///Commands that handle notebook entries
 #[poise::command(
     slash_command,
@@ -17,11 +33,7 @@ pub async fn entry(_ctx: Context<'_>) -> Result<(), Error> {
 }
 
 ///create a new entry timer
-#[poise::command(
-    slash_command,
-    prefix_command,
-    //check = "crate::commands::check_if_is_notebooker"
-)]
+#[poise::command(slash_command, prefix_command, check = "check_if_is_notebooker")]
 pub async fn create(
     ctx: Context<'_>,
     #[description = "time you want the timer to run, in hours"] time: i64,
@@ -30,23 +42,9 @@ pub async fn create(
     #[description = "whether you want the user to be reminded before the entry expires"]
     remind: Option<bool>,
 ) -> Result<(), Error> {
-    //We want to make sure that the user is supposed to be using this command
-    if !ctx
-        .author()
-        .has_role(
-            ctx.http(),
-            *ctx.data().guild_id,
-            *ctx.data().notebooker_role,
-        )
-        .await?
-    {
-        ctx.say("You aren't a notebooker").await?;
-        return Ok(());
-    }
-
     let current_time = Utc::now();
     //Change this to hours
-    let duration = chrono::Duration::seconds(time);
+    let duration = chrono::Duration::hours(time);
     let end_time = current_time + duration;
 
     let remind = remind.unwrap_or_else(|| false);
@@ -106,12 +104,13 @@ pub enum ViewOptions {
     Author,
 }
 //Displays entries
-#[poise::command(slash_command, prefix_command, ephemeral)]
+#[poise::command(slash_command, prefix_command)]
 pub async fn list(
     ctx: Context<'_>,
     #[description = "whether to display entries that are expired"] view: Option<ViewOptions>,
 ) -> Result<(), Error> {
     let user = ctx.author().id;
+
     let entries = match view.unwrap_or_else(|| ViewOptions::Author) {
         ViewOptions::Author => {
             let db_user_id = db::users::get_user_from_id(&ctx.data().database, &user)
@@ -129,6 +128,7 @@ pub async fn list(
 
         ViewOptions::AllExpired => fetch_entries(&ctx.data().database).await?,
     };
+
     let mut response = String::new();
     let mut index = 0;
     for entry in entries {

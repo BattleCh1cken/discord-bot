@@ -1,5 +1,7 @@
+pub mod boop;
+
+use crate::{Context, Error};
 use rand::Rng;
-use crate::{Error,Context};
 #[derive(poise::ChoiceParameter, Debug, PartialEq)]
 pub enum RPSOptions {
     Rock,
@@ -8,7 +10,7 @@ pub enum RPSOptions {
 }
 ///Rock Paper Scissors
 #[poise::command(slash_command)]
-pub async fn rps(ctx: Context<'_>,player_choice:RPSOptions) -> Result<(), Error> {
+pub async fn rps(ctx: Context<'_>, player_choice: RPSOptions) -> Result<(), Error> {
     let bot_choice = {
         let mut rng = rand::thread_rng();
         let result = rng.gen_range(1..=3);
@@ -18,7 +20,6 @@ pub async fn rps(ctx: Context<'_>,player_choice:RPSOptions) -> Result<(), Error>
             3 => RPSOptions::Scissors,
             _ => todo!(),
         }
-
     };
     let response = match (player_choice, bot_choice) {
         (RPSOptions::Rock, RPSOptions::Paper) => "Paper, I win!",
@@ -30,8 +31,8 @@ pub async fn rps(ctx: Context<'_>,player_choice:RPSOptions) -> Result<(), Error>
         (RPSOptions::Scissors, RPSOptions::Rock) => "Rock, I win!",
         (RPSOptions::Scissors, RPSOptions::Paper) => "Paper, you win!",
         (RPSOptions::Scissors, RPSOptions::Scissors) => "Scissors, it's a tie!",
-       };
-    ctx.say(response)
-        .await?;
+    };
+    ctx.say(response).await?;
     Ok(())
 }
+

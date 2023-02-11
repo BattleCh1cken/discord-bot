@@ -7,9 +7,11 @@ pub async fn search_for_score(db: &Pool<Sqlite>, user: serenity::UserId) -> Resu
     let user_id = *user.as_u64() as i64;
     let mut conn = db.acquire().await?;
 
-    let query: i64 = sqlx::query_scalar!("select boop_score FROM users WHERE user_id = ?", user_id)
-        .fetch_one(&mut conn)
-        .await?;
+    let query: i64 =
+        sqlx::query_scalar!("select boop_score from users where user_id = ?", user_id)
+            .fetch_one(&mut conn)
+            .await?
+            .unwrap_or_else(|| 0);
 
     Ok(query)
 }
@@ -32,8 +34,8 @@ pub async fn get_top_scores(db: &Pool<Sqlite>) -> Result<Vec<User>> {
         User,
         r#"
         select
-        id as "id!: i32", user_id as "user_id!", boop_score as "boop_score!", rps_wins as "rps_wins!: i32", missed_entries as "missed_entries!: i32"
-        from users order by boop_score desc limit 10
+        id as "id!: i32", user_id as "user_id!: i64", boop_score as "boop_score? :i32", rps_wins as "rps_wins?: i32", missed_entries as "missed_entries?: i32"
+        from users order by boop_score  desc limit 10
         "#,
     )
     .fetch_all(&mut conn)

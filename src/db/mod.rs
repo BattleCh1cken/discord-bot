@@ -1,5 +1,6 @@
 pub mod boop;
 pub mod entries;
+pub mod guilds;
 pub mod users;
 use anyhow::Result;
 use chrono::{prelude::*, Duration};
@@ -21,7 +22,6 @@ pub async fn new() -> Result<Pool<Sqlite>> {
                 .create_if_missing(true),
         )
         .await?;
-    // Whyyyy doesn't this work?
     sqlx::migrate!("./migrations").run(&db).await?;
     Ok(db)
 }
@@ -77,7 +77,7 @@ pub async fn poll(ctx: serenity::Context, db: Arc<Pool<Sqlite>>) -> Result<()> {
                                 ",
                                 user.mention(),
                                 entry.description,
-                                user_db_entry.missed_entries,
+                                user_db_entry.missed_entries.unwrap_or_else(|| 0),
                                 user.mention()
                             ))
                         });

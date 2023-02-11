@@ -1,8 +1,8 @@
-pub mod boop;
 pub mod entries;
 pub mod owner;
-pub mod misc;
 pub mod fun;
+pub mod settings;
+pub mod misc;
 
 use crate::{Context, Error};
 

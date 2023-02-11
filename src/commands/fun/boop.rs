@@ -73,17 +73,18 @@ pub async fn boop(ctx: Context<'_>) -> Result<(), Error> {
 
 #[poise::command(slash_command, category = "Boop")]
 pub async fn leaderboard(ctx: Context<'_>) -> Result<(), Error> {
-    let scores = get_top_scores(&ctx.data().database).await?;
+    let users = get_top_scores(&ctx.data().database).await?;
     let mut response = String::new();
     let mut index = 0;
-    for score in scores {
-        if score.boop_score != 0 {
-            let user = serenity::UserId(score.user_id as u64)
+    for user in users {
+        if user.boop_score != None {
+            let username = serenity::UserId(user.user_id as u64)
                 .to_user(&ctx.http())
-                .await?;
+                .await?.name;
+            let score = user.boop_score.unwrap();
 
             index += 1;
-            response += &format!("{}. {} -- {}\n", index, user.name, score.boop_score);
+            response += &format!("{}. {} -- {}\n", index, username, score);
         }
     }
 
