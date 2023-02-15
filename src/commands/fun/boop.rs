@@ -77,10 +77,11 @@ pub async fn leaderboard(ctx: Context<'_>) -> Result<(), Error> {
     let mut response = String::new();
     let mut index = 0;
     for user in users {
-        if user.boop_score != None {
+        if user.boop_score.is_some()  {
             let username = serenity::UserId(user.user_id as u64)
                 .to_user(&ctx.http())
-                .await?.name;
+                .await?
+                .name;
             let score = user.boop_score.unwrap();
 
             index += 1;

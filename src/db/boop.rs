@@ -7,11 +7,10 @@ pub async fn search_for_score(db: &Pool<Sqlite>, user: serenity::UserId) -> Resu
     let user_id = *user.as_u64() as i64;
     let mut conn = db.acquire().await?;
 
-    let query: i64 =
-        sqlx::query_scalar!("select boop_score from users where user_id = ?", user_id)
-            .fetch_one(&mut conn)
-            .await?
-            .unwrap_or_else(|| 0);
+    let query: i64 = sqlx::query_scalar!("select boop_score from users where user_id = ?", user_id)
+        .fetch_one(&mut conn)
+        .await?
+        .unwrap_or(0);
 
     Ok(query)
 }

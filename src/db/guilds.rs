@@ -1,5 +1,5 @@
 use anyhow::Result;
-use poise::serenity_prelude::{ChannelId, GuildId, RoleId};
+use poise::serenity_prelude::GuildId;
 use sqlx::{Pool, Sqlite};
 #[derive(Debug)]
 pub struct Guild {
@@ -10,20 +10,20 @@ pub struct Guild {
 }
 
 impl Guild {
-    pub fn merge(self, other: Guild) -> Self {
+    pub fn merge(self, other: &Guild) -> Self {
         Self {
             id: self.id,
             guild_id: self.guild_id,
 
             reminder_master_role: {
-                if self.reminder_master_role == None {
+                if self.reminder_master_role.is_none() {
                     other.reminder_master_role
                 } else {
                     self.reminder_master_role
                 }
             },
             reminder_channel: {
-                if self.reminder_channel == None {
+                if self.reminder_channel.is_none()  {
                     other.reminder_channel
                 } else {
                     self.reminder_channel
@@ -68,9 +68,34 @@ pub async fn get_guild(db: &Pool<Sqlite>, guild: &GuildId) -> Result<Guild> {
     Ok(guild)
 }
 
-pub async fn update_guilde_settings(db: &Pool<Sqlite>, guild: &Guild) -> Result<()> {
+pub async fn get_guild_from_db_id(db: &Pool<Sqlite>, db_id: &i64) -> Result<Guild> {
     let mut conn = db.acquire().await?;
-    sqlx::query!("").execute(&mut conn).await?;
+    let guild = sqlx::query_as!(
+        Guild,
+        r#"
+        select id as "id: i32", guild_id, reminder_master_role, reminder_channel from guilds
+        where id = ?
+                               "#,
+        db_id
+    )
+    .fetch_one(&mut conn)
+    .await?;
+
+    Ok(guild)
+}
+
+pub async fn update_guild_settings(db: &Pool<Sqlite>, guild_settings: &Guild) -> Result<()> {
+    let mut conn = db.acquire().await?;
+    sqlx::query!(
+        "update guilds
+        set reminder_master_role = ?, reminder_channel = ?
+        where guild_id = ?",
+        guild_settings.reminder_master_role,
+        guild_settings.reminder_channel,
+        guild_settings.guild_id
+    )
+    .execute(&mut conn)
+    .await?;
 
     Ok(())
 }

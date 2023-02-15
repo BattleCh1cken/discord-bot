@@ -14,6 +14,8 @@
       };
 
 
+      # Credit to Ivan Petov for getting sqlx macros working with nix
+      # https://ipetkov.dev/blog/building-with-sqlx-on-nix/
       naersk' = pkgs.callPackage naersk { };
       migrations = ./migrations;
       sqlx-db = pkgs.runCommand "sqlx-db-prepare"
@@ -98,6 +100,7 @@
         nativeBuildInputs = with pkgs; [
           rustc
           cargo
+          clippy
           rust-analyzer
           rustfmt
           sqlx-cli

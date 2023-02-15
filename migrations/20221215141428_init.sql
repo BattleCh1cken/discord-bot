@@ -1,12 +1,14 @@
-create table if not exists entries
+create table if not exists reminders
 (
   id integer primary key autoincrement not null,
   end_time datetime not null,
-  user_id integer not null,
+  user_id int not null,
+  guild_id int not null,
   description text not null,
-  remind_time integer,
+  remind_time datetime,
   active boolean not null,
   foreign key(user_id) references users(id)
+  foreign key(guild_id) references guilds(id)
 );
 
 create table if not exists users

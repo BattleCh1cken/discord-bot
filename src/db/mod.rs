@@ -1,16 +1,19 @@
 pub mod boop;
-pub mod entries;
 pub mod guilds;
+pub mod reminders;
 pub mod users;
 use anyhow::Result;
-use chrono::{prelude::*, Duration};
-use poise::serenity_prelude::{self as serenity, Mentionable, UserId};
+use chrono::prelude::*;
+use poise::serenity_prelude::{self as serenity, ChannelId, Mentionable, UserId};
 use std::sync::Arc;
 use std::{thread, time};
 
-use crate::{db, utils};
+use crate::db;
 use sqlx::{Pool, Sqlite};
 use std::env;
+
+use self::guilds::get_guild_from_db_id;
+use self::reminders::complete_reminder_remind;
 
 pub async fn new() -> Result<Pool<Sqlite>> {
     let db_url = env::var("DATABASE_URL").expect("No Database url found");
@@ -19,7 +22,7 @@ pub async fn new() -> Result<Pool<Sqlite>> {
         .connect_with(
             db_url
                 .parse::<sqlx::sqlite::SqliteConnectOptions>()?
-                .create_if_missing(true),
+                .create_if_missing(true), // FIXME: The db isn't being created automatically
         )
         .await?;
     sqlx::migrate!("./migrations").run(&db).await?;
@@ -27,64 +30,63 @@ pub async fn new() -> Result<Pool<Sqlite>> {
 }
 
 pub async fn poll(ctx: serenity::Context, db: Arc<Pool<Sqlite>>) -> Result<()> {
-    let channel_id: serenity::ChannelId =
-        utils::env_var("NOTIFICATION_CHANNEL").expect("No notification channel given");
-
     loop {
-        let search = entries::fetch_entries(&db).await?;
+        let search = reminders::fetch_reminders(&db).await?;
 
-        for entry in search {
-            // Remind the user if the entries are due soon
-            if entry.end_time - Utc::now() < Duration::minutes(30) && entry.remind {
-                let user_id = db::users::get_user_from_db_id(&db, &entry.user_id)
-                    .await?
-                    .user_id;
-                let user = UserId(user_id.try_into().unwrap())
-                    .to_user(&ctx.http)
+        for reminder in search {
+            // Remind the user that their time is nigh
+            if let Some(reminder_time) = reminder.remind_time {
+                if Utc::now() > reminder_time && reminder.active {
+                    let user_id = db::users::get_user_from_db_id(&db, &reminder.user_id)
+                        .await?
+                        .user_id;
+                    let user = UserId(user_id as u64).to_user(&ctx.http).await?;
+                    let response = format!("Do your entry: {}", reminder.description);
+
+                    user.direct_message(&ctx.http, |m| {
+                        m.embed(|e| e.title("Reminder").description(response))
+                    })
                     .await?;
-                let response = format!("Do your entry: {}", entry.description);
 
-                user.direct_message(&ctx.http, |m| {
-                    m.embed(|e| e.title("Entry Reminder").description(response))
-                })
-                .await?;
-
-                db::entries::complete_remind(&db, &entry.id).await?;
+                    complete_reminder_remind(&db, &user.into()).await?;
+                }
             }
 
             // Engage shaming
-            if Utc::now() > entry.end_time && entry.active {
-                let user_db_id = entry.user_id;
-                let user_db_entry = db::users::get_user_from_db_id(&db, &user_db_id).await?;
+            if Utc::now() > reminder.end_time && reminder.active {
+                let user_db_id = reminder.user_id;
+                let user_db_reminder = db::users::get_user_from_db_id(&db, &user_db_id).await?;
                 let user = serenity::UserId(
                     db::users::get_user_from_db_id(&db, &user_db_id)
                         .await?
-                        .user_id
-                        .try_into()
-                        .unwrap(),
+                        .user_id as u64,
                 );
 
-                channel_id
+                let reminder_channel = ChannelId(
+                    get_guild_from_db_id(&db, &reminder.guild_id)
+                        .await?
+                        .reminder_channel
+                        .unwrap() as u64,
+                );
+
+                reminder_channel
                     .send_message(&ctx.http, |m| {
                         m.embed(|e| {
-                            e.title("Expired Entry!").description(format!(
+                            e.title("Expired reminder!").description(format!(
                                 "
                                 **User:** {} 
                                 **Description:** {} 
-                                **Total missed entries:** {} 
-
-                                common {} L
+                                **Total missed reminders:** {} 
                                 ",
                                 user.mention(),
-                                entry.description,
-                                user_db_entry.missed_entries.unwrap_or_else(|| 0),
-                                user.mention()
+                                reminder.description,
+                                user_db_reminder.missed_entries.unwrap_or(0),
                             ))
                         });
                         m
                     })
                     .await?;
-                entries::complete_entry(&db, user).await?;
+                reminders::complete_reminder(&db, user).await?;
                 users::increase_missed_entries(&db, &user).await?;
             }
         }

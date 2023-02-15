@@ -1,8 +1,10 @@
-pub mod entries;
-pub mod owner;
 pub mod fun;
-pub mod settings;
 pub mod misc;
+pub mod owner;
+pub mod reminder;
+pub mod settings;
+
+pub mod checks;
 
 use crate::{Context, Error};
 

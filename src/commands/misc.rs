@@ -43,7 +43,7 @@ pub async fn resources(
     ctx: Context<'_>,
     #[description = "bob"] resource: Option<Resources>,
 ) -> Result<(), Error> {
-    let resource = resource.unwrap_or_else(|| Resources::General);
+    let resource = resource.unwrap_or(Resources::General);
 
     let response = match resource {
         Resources::General => String::from("

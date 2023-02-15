@@ -16,19 +16,17 @@ use log::error;
 #[derive(Debug)]
 pub struct Data {
     pub database: Arc<Pool<Sqlite>>,
-    pub notebooker_role: Arc<serenity::RoleId>,
-    pub guild_id: Arc<serenity::GuildId>,
+    //pub notebooker_role: Arc<serenity::RoleId>,
+    //pub guild_id: Arc<serenity::GuildId>,
     pub start_time: DateTime<Utc>,
 }
 
-//type aliases save us some typing
+// Type aliases save us some typing
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 pub type Context<'a> = poise::Context<'a, Data, Error>;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let notebooker_role = Arc::new(serenity::RoleId(env_var("NOTEBOOKER_ROLE").unwrap()));
-    let guild_id = Arc::new(serenity::GuildId(env_var("GUILD").unwrap()));
     let owner_id = env_var::<u64>("OWNER");
     let token = env_var::<String>("TOKEN");
     let database = Arc::new(db::new().await?);
@@ -42,7 +40,7 @@ async fn main() -> anyhow::Result<()> {
                 fun::boop::boop(),
                 fun::boop::leaderboard(),
                 fun::rps(),
-                entries::entry(),
+                reminder::reminder(),
                 owner::register(),
                 owner::motivate(),
                 settings::settings(),
@@ -76,17 +74,16 @@ async fn main() -> anyhow::Result<()> {
                         Ok(()) => {}
                         Err(error) => {
                             error!("Error while polling: {}", error);
-                            panic!("Error while Polling: {}", error)
                         }
                     };
                 });
 
-                poise::builtins::register_in_guild(ctx, &framework.options().commands, *guild_id)
+                let guild_id = serenity::GuildId(env_var("GUILD").unwrap());
+                poise::builtins::register_in_guild(ctx, &framework.options().commands, guild_id)
                     .await?;
+
                 Ok(Data {
                     database,
-                    notebooker_role,
-                    guild_id,
                     start_time: Utc::now(),
                 })
             })

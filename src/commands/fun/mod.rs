@@ -2,7 +2,7 @@ pub mod boop;
 
 use crate::{Context, Error};
 use rand::Rng;
-#[derive(poise::ChoiceParameter, Debug, PartialEq)]
+#[derive(poise::ChoiceParameter, Debug, PartialEq, Eq)]
 pub enum RPSOptions {
     Rock,
     Paper,
