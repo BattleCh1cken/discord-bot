@@ -1,11 +1,12 @@
 use poise::serenity_prelude::{Channel, ChannelId, Mentionable, Role, RoleId};
 
 use crate::{
+    commands::checks::is_administrator,
     db::guilds::{create_guild, get_guild, update_guild_settings, Guild},
     Context, Error,
 };
 
-#[poise::command(slash_command, guild_only)]
+#[poise::command(slash_command, guild_only, check = "is_administrator")]
 pub async fn settings(
     ctx: Context<'_>,
     #[description = "The role that has the power to set reminders for other users"]

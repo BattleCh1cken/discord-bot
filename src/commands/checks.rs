@@ -1,6 +1,20 @@
 use crate::{db::guilds::get_guild, Context, Error};
 use poise::serenity_prelude::{CacheHttp, RoleId};
 
+pub async fn is_administrator(ctx: Context<'_>) -> Result<bool, Error> {
+    let guild = ctx.guild().unwrap();
+    let user = ctx.author();
+    let result = guild
+        .member_permissions(ctx, user.id)
+        .await?
+        .administrator();
+
+    if !result {
+        ctx.say("You aren't an administrator!").await?;
+    }
+    Ok(result)
+}
+
 pub async fn is_reminder_master(ctx: Context<'_>) -> Result<bool, Error> {
     let guild_id = ctx.guild_id().unwrap();
     let reminder_master_role = match get_guild(&ctx.data().database, &guild_id)
