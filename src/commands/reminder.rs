@@ -32,7 +32,7 @@ pub async fn create(
     remind_time: Option<i32>,
 ) -> Result<(), Error> {
     let current_time = Utc::now();
-    let duration = chrono::Duration::seconds(time);
+    let duration = chrono::Duration::hours(time);
     let end_time = current_time + duration;
 
     let remind_time = remind_time.map(|time| end_time - chrono::Duration::hours(time as i64));
