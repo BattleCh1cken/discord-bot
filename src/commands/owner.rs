@@ -8,14 +8,25 @@ pub async fn register(ctx: Context<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-///Makes slash commands available
+/// Motivation moment
 #[poise::command(slash_command, owners_only, ephemeral, hide_in_help)]
 pub async fn motivate(
     ctx: Context<'_>,
-    #[description = "who you want to motivate"] user: User,
+    #[description = "who you want to motivate"] user: Option<User>,
     #[description = "message you want to send"] message: String,
 ) -> Result<(), Error> {
-    user.direct_message(&ctx.http(), |m| m.content(message))
-        .await?;
+    match user {
+        Some(user) => {
+            user.direct_message(&ctx.http(), |m| m.content(message))
+                .await?;
+            ctx.say("message sent").await?;
+        }
+        None => {
+            let channel = ctx.channel_id();
+            channel.send_message(ctx, |m| m.content(message)).await?;
+            ctx.say("message sent").await?;
+        }
+    }
+
     Ok(())
 }

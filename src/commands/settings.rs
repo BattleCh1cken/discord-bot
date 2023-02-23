@@ -1,4 +1,4 @@
-use poise::serenity_prelude::{Channel, ChannelId, Mentionable, Role, RoleId};
+use poise::serenity_prelude::{Channel, ChannelId, Role, RoleId};
 
 use crate::{
     commands::checks::is_administrator,
@@ -33,11 +33,20 @@ pub async fn settings(
     .merge(&old_guild_settings);
 
     update_guild_settings(&ctx.data().database, &new_guild_settings).await?;
+
     let reminder_channel_name =
-        ChannelId(new_guild_settings.reminder_master_role.unwrap_or(0) as u64).mention();
+        ChannelId(new_guild_settings.reminder_master_role.unwrap_or(0) as u64)
+            .to_channel(ctx)
+            .await?
+            .guild()
+            .unwrap()
+            .name;
 
     let reminder_master_role_name =
-        RoleId(new_guild_settings.reminder_master_role.unwrap_or(0) as u64).mention();
+        RoleId(new_guild_settings.reminder_master_role.unwrap_or(0) as u64)
+            .to_role_cached(ctx)
+            .unwrap()
+            .name;
 
     ctx.send(|m| {
         m.embed(|e| {
