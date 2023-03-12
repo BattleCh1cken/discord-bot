@@ -25,7 +25,7 @@ pub async fn help(
 #[poise::command(prefix_command, track_edits, slash_command, category = "Miscellaneous")]
 pub async fn uptime(ctx: Context<'_>) -> Result<(), Error> {
     let uptime = format_duration((Utc::now() - ctx.data().start_time).to_std().unwrap());
-    ctx.say(format!("{} seconds", uptime)).await?;
+    ctx.say(format!("{}", uptime)).await?;
 
     Ok(())
 }
