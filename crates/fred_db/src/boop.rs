@@ -1,4 +1,4 @@
-use crate::db::users::User;
+use crate::users::User;
 use anyhow::Result;
 use poise::serenity_prelude as serenity;
 use sqlx::{Pool, Sqlite};

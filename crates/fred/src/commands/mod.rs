@@ -1,8 +1,9 @@
 pub mod fun;
-pub mod misc;
 pub mod owner;
 pub mod reminder;
 pub mod settings;
+pub mod robot;
+pub mod misc;
 
 pub mod checks;
 

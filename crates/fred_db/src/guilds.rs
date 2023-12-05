@@ -7,6 +7,7 @@ pub struct Guild {
     pub guild_id: i64,
     pub reminder_master_role: Option<i64>,
     pub reminder_channel: Option<i64>,
+    pub counting_channel: Option<i64>,
 }
 
 impl Guild {
@@ -23,10 +24,17 @@ impl Guild {
                 }
             },
             reminder_channel: {
-                if self.reminder_channel.is_none()  {
+                if self.reminder_channel.is_none() {
                     other.reminder_channel
                 } else {
                     self.reminder_channel
+                }
+            },
+            counting_channel: {
+                if self.counting_channel.is_none() {
+                    other.counting_channel
+                } else {
+                    self.counting_channel
                 }
             },
         }
@@ -51,13 +59,13 @@ pub async fn create_guild(db: &Pool<Sqlite>, guild: &GuildId) -> Result<()> {
     Ok(())
 }
 
-pub async fn get_guild(db: &Pool<Sqlite>, guild: &GuildId) -> Result<Guild> {
+pub async fn get_guild(db: &Pool<Sqlite>, guild: GuildId) -> Result<Guild> {
     let mut conn = db.acquire().await?;
     let guild_id = *guild.as_u64() as i64;
     let guild = sqlx::query_as!(
         Guild,
         r#"
-        select id as "id: i32", guild_id, reminder_master_role, reminder_channel from guilds
+        select id as "id: i32", guild_id, reminder_master_role, reminder_channel, counting_channel from guilds
         where guild_id = ?
                                "#,
         guild_id
@@ -73,7 +81,7 @@ pub async fn get_guild_from_db_id(db: &Pool<Sqlite>, db_id: &i64) -> Result<Guil
     let guild = sqlx::query_as!(
         Guild,
         r#"
-        select id as "id: i32", guild_id, reminder_master_role, reminder_channel from guilds
+        select id as "id: i32", guild_id, reminder_master_role, reminder_channel, counting_channel from guilds
         where id = ?
                                "#,
         db_id
@@ -88,11 +96,12 @@ pub async fn update_guild_settings(db: &Pool<Sqlite>, guild_settings: &Guild) ->
     let mut conn = db.acquire().await?;
     sqlx::query!(
         "update guilds
-        set reminder_master_role = ?, reminder_channel = ?
+        set reminder_master_role = ?, reminder_channel = ?, counting_channel = ?
         where guild_id = ?",
         guild_settings.reminder_master_role,
         guild_settings.reminder_channel,
-        guild_settings.guild_id
+        guild_settings.guild_id,
+        guild_settings.counting_channel
     )
     .execute(&mut conn)
     .await?;

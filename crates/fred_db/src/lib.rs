@@ -8,7 +8,6 @@ use poise::serenity_prelude::{self as serenity, ChannelId, Mentionable, UserId};
 use std::sync::Arc;
 use std::{thread, time};
 
-use crate::db;
 use sqlx::{Pool, Sqlite};
 use std::env;
 
@@ -37,7 +36,7 @@ pub async fn poll(ctx: serenity::Context, db: Arc<Pool<Sqlite>>) -> Result<()> {
             // Remind the user that their time is nigh
             if let Some(reminder_time) = reminder.remind_time {
                 if Utc::now() > reminder_time && reminder.active {
-                    let user_id = db::users::get_user_from_db_id(&db, &reminder.user_id)
+                    let user_id = users::get_user_from_db_id(&db, &reminder.user_id)
                         .await?
                         .user_id;
                     let user = UserId(user_id as u64).to_user(&ctx.http).await?;
@@ -55,11 +54,9 @@ pub async fn poll(ctx: serenity::Context, db: Arc<Pool<Sqlite>>) -> Result<()> {
             // Engage shaming
             if Utc::now() > reminder.end_time && reminder.active {
                 let user_db_id = reminder.user_id;
-                let user_db_reminder = db::users::get_user_from_db_id(&db, &user_db_id).await?;
+                let user_db_reminder = users::get_user_from_db_id(&db, &user_db_id).await?;
                 let user = serenity::UserId(
-                    db::users::get_user_from_db_id(&db, &user_db_id)
-                        .await?
-                        .user_id as u64,
+                    users::get_user_from_db_id(&db, &user_db_id).await?.user_id as u64,
                 );
 
                 let reminder_channel = ChannelId(

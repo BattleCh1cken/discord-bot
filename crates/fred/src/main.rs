@@ -4,21 +4,20 @@ mod tests;
 mod utils;
 use chrono::{DateTime, Utc};
 use commands::*;
+use log::error;
 use poise::serenity_prelude::{self as serenity, Activity};
+use robotevents;
 use sqlx::{Pool, Sqlite};
 use std::collections::HashSet;
 use std::sync::Arc;
 use utils::env_var;
-mod db;
-use log::error;
 
 // Globally accessible read only data
 #[derive(Debug)]
 pub struct Data {
     pub database: Arc<Pool<Sqlite>>,
-    //pub notebooker_role: Arc<serenity::RoleId>,
-    //pub guild_id: Arc<serenity::GuildId>,
     pub start_time: DateTime<Utc>,
+    pub robotevents: robotevents::Client,
 }
 
 // Type aliases save us some typing
@@ -29,8 +28,10 @@ pub type Context<'a> = poise::Context<'a, Data, Error>;
 async fn main() -> anyhow::Result<()> {
     let owner_id = env_var::<u64>("OWNER");
     let token = env_var::<String>("TOKEN");
-    let database = Arc::new(db::new().await?);
-
+    let database = Arc::new(fred_db::new().await?);
+    let robotevents_token =
+        std::env::var("ROBOTEVENTS_TOKEN").expect("No robotevents token provided");
+    let robotevents_client = robotevents::Client::new(robotevents_token);
     env_logger::init();
 
     let framework = poise::Framework::builder()
@@ -41,6 +42,7 @@ async fn main() -> anyhow::Result<()> {
                 fun::boop::leaderboard(),
                 fun::rps(),
                 reminder::reminder(),
+                robot::vex(),
                 owner::register(),
                 owner::motivate(),
                 settings::settings(),
@@ -62,7 +64,10 @@ async fn main() -> anyhow::Result<()> {
             ..Default::default()
         })
         .token(token.unwrap())
-        .intents(serenity::GatewayIntents::non_privileged())
+        .intents(
+            serenity::GatewayIntents::non_privileged()
+                .union(serenity::GatewayIntents::MESSAGE_CONTENT),
+        )
         .setup(|ctx, _ready, framework| {
             Box::pin(async move {
                 ctx.set_activity(Activity::watching("the watchmen")).await;
@@ -70,7 +75,7 @@ async fn main() -> anyhow::Result<()> {
                 let polling_ctx = ctx.clone();
                 let polling_database = Arc::clone(&database);
                 tokio::spawn(async move {
-                    match db::poll(polling_ctx, polling_database).await {
+                    match fred_db::poll(polling_ctx, polling_database).await {
                         Ok(()) => {}
                         Err(error) => {
                             error!("Error while polling: {}", error);
@@ -85,6 +90,7 @@ async fn main() -> anyhow::Result<()> {
                 Ok(Data {
                     database,
                     start_time: Utc::now(),
+                    robotevents: robotevents_client,
                 })
             })
         });

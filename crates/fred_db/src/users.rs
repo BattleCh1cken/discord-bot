@@ -2,7 +2,8 @@ use anyhow::Result;
 use poise::serenity_prelude::UserId;
 use sqlx::{Pool, Sqlite};
 
-use crate::db;
+use crate::users;
+
 
 #[derive(Debug)]
 pub struct User {
@@ -33,7 +34,7 @@ pub async fn create_user(db: &Pool<Sqlite>, user: &UserId) -> Result<()> {
 pub async fn increase_missed_entries(db: &Pool<Sqlite>, user: &UserId) -> Result<()> {
     let mut conn = db.acquire().await?;
 
-    let user_db_id = db::users::get_user_from_id(db, user).await?.id;
+    let user_db_id = users::get_user_from_id(db, user).await?.id;
     sqlx::query!(
         "update users set missed_entries = missed_entries + 1
                         where id = ?",

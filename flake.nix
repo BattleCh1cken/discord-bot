@@ -30,6 +30,7 @@
 
     in
     rec {
+
       fred = naersk'.buildPackage {
         src = ./.;
         nativeBuildInputs = with pkgs; [
@@ -45,6 +46,7 @@
           preBuildPhases = [ "linkDb" ] ++ (old.preBuildPhases or [ ]);
         };
       };
+
       nixosModule =
         { config, options, lib, pkgs, ... }:
         let
@@ -91,8 +93,6 @@
             };
         };
 
-      # For `nix develop` (optional, can be skipped):
-
       devShells.${system}.default = pkgs.mkShell {
         shellHook = ''
           export $(cat .env)
@@ -106,6 +106,9 @@
           sqlx-cli
           sqliteman
           sqlite
+
+          openssl
+          pkgconfig
         ];
       };
     };

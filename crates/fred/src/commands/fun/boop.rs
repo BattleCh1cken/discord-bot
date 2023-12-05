@@ -1,10 +1,9 @@
-use crate::{
-    db::{
-        boop::{get_top_scores, search_for_score, update_score},
-        users::create_user,
-    },
-    Context, Data, Error,
+use crate::{Context, Data, Error};
+use fred_db::{
+    boop::{get_top_scores, search_for_score, update_score},
+    users::create_user,
 };
+
 use log::error;
 
 use poise::serenity_prelude::{self as serenity, CacheHttp};
@@ -77,7 +76,7 @@ pub async fn leaderboard(ctx: Context<'_>) -> Result<(), Error> {
     let mut response = String::new();
     let mut index = 0;
     for user in users {
-        if user.boop_score.is_some()  {
+        if user.boop_score.is_some() {
             let username = serenity::UserId(user.user_id as u64)
                 .to_user(&ctx.http())
                 .await?

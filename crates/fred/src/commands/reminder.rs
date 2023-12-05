@@ -1,9 +1,9 @@
 use crate::{
     commands::checks::{has_reminder_role_setting, is_reminder_master},
-    db::{self, guilds::get_guild, reminders::*, users},
     Context, Error,
 };
 use chrono::prelude::*;
+use fred_db::{self, guilds::get_guild, reminders::*, users};
 use humantime::{self, format_duration};
 use poise::serenity_prelude::{self as serenity, CacheHttp, Mentionable, UserId};
 
@@ -48,14 +48,15 @@ pub async fn create(
     };
 
     // Clone is needed because user is cast to i64, which requires a dereference
-    db::users::create_user(&ctx.data().database, &user.clone().into()).await?;
+    fred_db::users::create_user(&ctx.data().database, &user.clone().into()).await?;
 
-    let user_id = db::users::get_user_from_id(&ctx.data().database, &user.clone().into()).await?;
-    let guild_db_id = get_guild(&ctx.data().database, &ctx.guild_id().unwrap())
+    let user_id =
+        fred_db::users::get_user_from_id(&ctx.data().database, &user.clone().into()).await?;
+    let guild_db_id = get_guild(&ctx.data().database, ctx.guild_id().unwrap())
         .await?
         .id;
 
-    db::reminders::create_reminder(
+    fred_db::reminders::create_reminder(
         &ctx.data().database,
         &end_time,
         &user_id.id,
@@ -94,7 +95,7 @@ pub async fn create(
 #[poise::command(slash_command, prefix_command)]
 pub async fn complete(ctx: Context<'_>) -> Result<(), Error> {
     let user: UserId = ctx.author().into();
-    db::reminders::complete_reminder(&ctx.data().database, user).await?;
+    fred_db::reminders::complete_reminder(&ctx.data().database, user).await?;
 
     ctx.say("Reminders marked as complete").await?;
 
@@ -122,13 +123,13 @@ pub async fn list(
 
     let reminders = match view.unwrap_or(ViewOptions::Author) {
         ViewOptions::Author => {
-            let db_user_id = db::users::get_user_from_id(&ctx.data().database, &user)
+            let db_user_id = fred_db::users::get_user_from_id(&ctx.data().database, &user)
                 .await?
                 .id;
             fetch_active_reminders_for_user(&ctx.data().database, &db_user_id).await?
         }
         ViewOptions::AuthorExpired => {
-            let db_user_id = db::users::get_user_from_id(&ctx.data().database, &user)
+            let db_user_id = fred_db::users::get_user_from_id(&ctx.data().database, &user)
                 .await?
                 .id;
             fetch_reminders_for_user(&ctx.data().database, &db_user_id).await?

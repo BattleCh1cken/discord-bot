@@ -4,7 +4,9 @@ use poise::serenity_prelude::{CacheHttp, User};
 ///Makes slash commands available
 #[poise::command(prefix_command, slash_command, owners_only, ephemeral, hide_in_help)]
 pub async fn register(ctx: Context<'_>) -> Result<(), Error> {
+    println!("registering");
     poise::builtins::register_application_commands_buttons(ctx).await?;
+    println!("registered");
     Ok(())
 }
 

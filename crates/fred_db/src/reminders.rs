@@ -3,7 +3,8 @@ use chrono::prelude::*;
 use poise::serenity_prelude::UserId;
 use sqlx::{Pool, Sqlite};
 
-use crate::db;
+use crate::users;
+
 
 #[derive(Clone, Debug)]
 pub struct Reminder {
@@ -105,7 +106,7 @@ pub async fn fetch_reminders_for_user(db: &Pool<Sqlite>, db_id: &i32) -> Result<
 pub async fn complete_reminder(db: &Pool<Sqlite>, user: UserId) -> Result<()> {
     let mut conn = db.acquire().await?;
 
-    let user_db_id = db::users::get_user_from_id(db, &user).await?.id;
+    let user_db_id = users::get_user_from_id(db, &user).await?.id;
 
     sqlx::query!(
         "
@@ -125,7 +126,7 @@ pub async fn complete_reminder(db: &Pool<Sqlite>, user: UserId) -> Result<()> {
 pub async fn complete_reminder_remind(db: &Pool<Sqlite>, user: &UserId) -> Result<()> {
     let mut conn = db.acquire().await?;
 
-    let user_db_id = db::users::get_user_from_id(db, user).await?.id;
+    let user_db_id = users::get_user_from_id(db, user).await?.id;
 
     sqlx::query!(
         "
